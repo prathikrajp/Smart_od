@@ -1,10 +1,14 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const connectDB = require('./db');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
+
+// ── Database Connection ──────────────────────────────────────────────────────
+connectDB();
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(cors({

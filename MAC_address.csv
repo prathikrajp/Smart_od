@@ -149,3 +149,13 @@ pks canteen,Campus,All,Ground Floor,AA:BB:CC:DD:EE:05,CIT-Guest,pks canteen AP,1
 oat,Campus,All,Ground Floor,AA:BB:CC:DD:EE:07,CIT-Guest,oat AP,12.969351,80.043249
 mess,Campus,All,Ground Floor,AA:BB:CC:DD:EE:08,CIT-Guest,mess AP,12.974014,80.042894
 temple,Campus,All,Ground Floor,AA:BB:CC:DD:EE:09,CIT-Guest,temple AP,12.971787,80.045143
+CADENCE,LAB,All,Ground Floor,BB:01:CA:DE:NC:E0,CIT-WiFi,CADENCE Lab AP,,
+KUKA,LAB,All,Ground Floor,BB:02:KU:KA:00:01,CIT-WiFi,KUKA Lab AP,,
+IA,LAB,All,1st Floor,BB:03:IA:00:00:01,CIT-WiFi,IA Lab AP,,
+DRONE,LAB,All,1st Floor,BB:04:DR:ON:E0:01,CIT-WiFi,DRONE Lab AP,,
+BAJA,LAB,All,Ground Floor,BB:05:BA:JA:00:01,CIT-WiFi,BAJA Lab AP,,
+AI,LAB,All,2nd Floor,BB:06:A1:00:00:01,CIT-WiFi,AI Lab AP,,
+PCB,LAB,All,2nd Floor,BB:07:PC:B0:00:01,CIT-WiFi,PCB Lab AP,,
+CLOUD COMPUTING,LAB,All,3rd Floor,BB:08:CC:00:00:01,CIT-WiFi,CLOUD COMPUTING Lab AP,,
+IOT,LAB,All,3rd Floor,BB:09:10:T0:00:01,CIT-WiFi,IOT Lab AP,,
+EMBEDED,LAB,All,Ground Floor,BB:10:EM:BE:D0:01,CIT-WiFi,EMBEDED Lab AP,,

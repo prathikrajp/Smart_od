@@ -1,0 +1,161 @@
+className,lat,lng,floor,bssid,ssid,apLocation
+ACT-1,,,Ground Floor,3E:AA:D5:08:83:26,CIT-Guest,ACT-1 AP
+ACT-10,,,1st Floor,92:CB:76:38:78:62,CIT-WiFi,ACT-10 Classroom AP
+ACT-2,,,Ground Floor,DE:66:98:C1:21:CC,CIT-Guest,ACT-2 AP
+ACT-3,,,Ground Floor,3A:5B:C3:DB:62:85,CIT-Guest,ACT-3 AP
+ACT-4,,,Ground Floor,CA:5C:CA:EC:74:A2,CIT-Guest,ACT-4 AP
+ACT-5,,,2nd Floor,9A:A6:70:13:F8:26,CIT-WiFi,ACT-5 Classroom AP
+ACT-6,,,3rd Floor,BE:14:D5:5F:3E:23,CIT-WiFi,ACT-6 Classroom AP
+ACT-7,,,1st Floor,12:97:70:5A:75:BC,CIT-WiFi,ACT-7 Classroom AP
+ACT-8,,,2nd Floor,52:5C:5C:58:EF:36,CIT-WiFi,ACT-8 Classroom AP
+ACT-9,,,3rd Floor,C6:40:B3:F9:E4:D3,CIT-WiFi,ACT-9 Classroom AP
+AIDS-1,,,Ground Floor,E6:AB:2F:E1:A7:6D,CIT-Guest,AIDS-1 AP
+AIDS-10,,,1st Floor,8E:CF:9D:2A:BA:CB,CIT-WiFi,AIDS-10 Classroom AP
+AIDS-2,,,Ground Floor,6A:B1:D1:B4:57:6A,CIT-Guest,AIDS-2 AP
+AIDS-3,,,Ground Floor,DE:D0:42:58:CC:72,CIT-Guest,AIDS-3 AP
+AIDS-4,,,Ground Floor,2E:E6:BD:0E:50:B2,CIT-Guest,AIDS-4 AP
+AIDS-5,,,2nd Floor,42:E2:79:93:AF:E0,CIT-WiFi,AIDS-5 Classroom AP
+AIDS-6,,,3rd Floor,FA:CF:E5:DB:20:2A,CIT-WiFi,AIDS-6 Classroom AP
+AIDS-7,,,1st Floor,C6:D5:2E:C6:1F:C7,CIT-WiFi,AIDS-7 Classroom AP
+AIDS-8,,,2nd Floor,3E:51:29:4E:6D:F2,CIT-WiFi,AIDS-8 Classroom AP
+AIDS-9,,,3rd Floor,BA:3F:61:6E:9C:EE,CIT-WiFi,AIDS-9 Classroom AP
+AIML-1,,,Ground Floor,FA:80:19:52:03:43,CIT-Guest,AIML-1 AP
+AIML-10,,,1st Floor,CA:03:D3:FF:68:8B,CIT-WiFi,AIML-10 Classroom AP
+AIML-2,,,Ground Floor,2A:C6:6F:E6:B7:B2,CIT-Guest,AIML-2 AP
+AIML-3,,,Ground Floor,5E:F9:D2:33:9A:DC,CIT-Guest,AIML-3 AP
+AIML-4,,,Ground Floor,A6:41:18:76:5E:CF,CIT-Guest,AIML-4 AP
+AIML-5,,,2nd Floor,5A:1D:C9:F4:8F:DC,CIT-WiFi,AIML-5 Classroom AP
+AIML-6,,,3rd Floor,E2:34:71:53:14:F0,CIT-WiFi,AIML-6 Classroom AP
+AIML-7,,,1st Floor,32:00:15:8B:98:3C,CIT-WiFi,AIML-7 Classroom AP
+AIML-8,,,2nd Floor,0E:D5:CD:46:2E:95,CIT-WiFi,AIML-8 Classroom AP
+AIML-9,,,3rd Floor,EA:12:9E:15:EC:0E,CIT-WiFi,AIML-9 Classroom AP
+BME-1,,,Ground Floor,82:E9:3C:06:AB:8A,CIT-Guest,BME-1 AP
+BME-10,,,1st Floor,4E:22:43:96:D3:CE,CIT-WiFi,BME-10 Classroom AP
+BME-2,,,Ground Floor,3E:00:F4:CF:92:08,CIT-Guest,BME-2 AP
+BME-3,,,Ground Floor,22:36:C4:AB:C1:3B,CIT-Guest,BME-3 AP
+BME-4,,,Ground Floor,62:72:47:CF:2B:04,CIT-Guest,BME-4 AP
+BME-5,,,2nd Floor,AA:5C:3F:B6:80:7A,CIT-WiFi,BME-5 Classroom AP
+BME-6,,,3rd Floor,56:CD:2E:1B:DC:77,CIT-WiFi,BME-6 Classroom AP
+BME-7,,,1st Floor,C2:16:49:25:6B:51,CIT-WiFi,BME-7 Classroom AP
+BME-8,,,2nd Floor,2E:E9:F0:3B:EB:90,CIT-WiFi,BME-8 Classroom AP
+BME-9,,,3rd Floor,DE:78:A4:00:FC:00,CIT-WiFi,BME-9 Classroom AP
+CS-1,,,Ground Floor,DA:BF:70:57:F1:19,CIT-Guest,CS-1 AP
+CS-10,,,1st Floor,56:27:5E:0C:C4:7A,CIT-WiFi,CS-10 Classroom AP
+CS-2,,,Ground Floor,36:CE:E2:AF:54:34,CIT-Guest,CS-2 AP
+CS-3,,,Ground Floor,06:44:7E:2F:72:AB,CIT-Guest,CS-3 AP
+CS-4,,,Ground Floor,F2:A4:DD:52:0E:67,CIT-Guest,CS-4 AP
+CS-5,,,2nd Floor,B6:17:06:D7:80:FD,CIT-WiFi,CS-5 Classroom AP
+CS-6,,,3rd Floor,46:9C:EA:39:54:52,CIT-WiFi,CS-6 Classroom AP
+CS-7,,,1st Floor,26:56:4E:42:74:11,CIT-WiFi,CS-7 Classroom AP
+CS-8,,,2nd Floor,7E:A2:7F:80:AD:15,CIT-WiFi,CS-8 Classroom AP
+CS-9,,,3rd Floor,FA:20:86:D9:F7:8D,CIT-WiFi,CS-9 Classroom AP
+CSBS-1,,,Ground Floor,8E:81:95:C4:6F:15,CIT-Guest,CSBS-1 AP
+CSBS-10,,,1st Floor,CE:34:AE:5F:2D:4B,CIT-WiFi,CSBS-10 Classroom AP
+CSBS-2,,,Ground Floor,66:9A:97:E3:52:75,CIT-Guest,CSBS-2 AP
+CSBS-3,,,Ground Floor,E2:B5:20:F5:DF:AF,CIT-Guest,CSBS-3 AP
+CSBS-4,,,Ground Floor,52:35:67:40:90:F8,CIT-Guest,CSBS-4 AP
+CSBS-5,,,2nd Floor,52:57:E2:2D:0D:31,CIT-WiFi,CSBS-5 Classroom AP
+CSBS-6,,,3rd Floor,56:0E:CE:5D:79:B1,CIT-WiFi,CSBS-6 Classroom AP
+CSBS-7,,,1st Floor,8A:10:17:0A:14:C8,CIT-WiFi,CSBS-7 Classroom AP
+CSBS-8,,,2nd Floor,12:8C:4E:C8:D4:DE,CIT-WiFi,CSBS-8 Classroom AP
+CSBS-9,,,3rd Floor,26:0D:98:9B:B6:40,CIT-WiFi,CSBS-9 Classroom AP
+CSE-1,,,Ground Floor,02:15:A5:6F:37:7D,CIT-Guest,CSE-1 AP
+CSE-10,,,1st Floor,3A:AD:4F:96:AD:33,CIT-WiFi,CSE-10 Classroom AP
+CSE-2,,,Ground Floor,DA:23:E0:39:37:9A,CIT-Guest,CSE-2 AP
+CSE-3,,,Ground Floor,DE:0C:05:99:40:B3,CIT-Guest,CSE-3 AP
+CSE-4,,,Ground Floor,62:BF:02:8C:43:29,CIT-Guest,CSE-4 AP
+CSE-5,,,2nd Floor,26:82:CF:45:B7:03,CIT-WiFi,CSE-5 Classroom AP
+CSE-6,,,3rd Floor,06:F1:E3:00:BC:3E,CIT-WiFi,CSE-6 Classroom AP
+CSE-7,,,1st Floor,A2:89:DB:75:B5:7A,CIT-WiFi,CSE-7 Classroom AP
+CSE-8,,,2nd Floor,96:36:C7:76:7F:54,CIT-WiFi,CSE-8 Classroom AP
+CSE-9,,,3rd Floor,2E:71:1B:79:B4:7C,CIT-WiFi,CSE-9 Classroom AP
+CVL-1,,,Ground Floor,1A:42:69:EC:74:CB,CIT-Guest,CVL-1 AP
+CVL-10,,,1st Floor,22:1E:E8:64:29:99,CIT-WiFi,CVL-10 Classroom AP
+CVL-2,,,Ground Floor,DA:CB:68:F6:2F:B3,CIT-Guest,CVL-2 AP
+CVL-3,,,Ground Floor,E6:8D:0B:99:57:AB,CIT-Guest,CVL-3 AP
+CVL-4,,,Ground Floor,B2:14:5E:30:5A:87,CIT-Guest,CVL-4 AP
+CVL-5,,,2nd Floor,F2:36:CC:67:46:90,CIT-WiFi,CVL-5 Classroom AP
+CVL-6,,,3rd Floor,AE:2F:2F:30:51:3C,CIT-WiFi,CVL-6 Classroom AP
+CVL-7,,,1st Floor,96:83:F7:F6:5E:A3,CIT-WiFi,CVL-7 Classroom AP
+CVL-8,,,2nd Floor,52:8D:D9:5F:BF:7E,CIT-WiFi,CVL-8 Classroom AP
+CVL-9,,,3rd Floor,62:21:E6:EB:6B:7A,CIT-WiFi,CVL-9 Classroom AP
+ECE-1,,,Ground Floor,CE:8C:E5:43:4E:52,CIT-Guest,ECE-1 AP
+ECE-10,,,1st Floor,D2:6E:30:67:06:D3,CIT-WiFi,ECE-10 Classroom AP
+ECE-2,,,Ground Floor,32:BD:84:3E:AB:E4,CIT-Guest,ECE-2 AP
+ECE-3,,,Ground Floor,CA:C3:F6:69:B7:40,CIT-Guest,ECE-3 AP
+ECE-4,,,Ground Floor,CA:8E:B2:FC:F6:16,CIT-Guest,ECE-4 AP
+ECE-5,,,2nd Floor,DA:65:85:89:16:F2,CIT-WiFi,ECE-5 Classroom AP
+ECE-6,,,3rd Floor,46:84:56:9B:E2:B9,CIT-WiFi,ECE-6 Classroom AP
+ECE-7,,,1st Floor,DE:1D:D3:87:AB:FA,CIT-WiFi,ECE-7 Classroom AP
+ECE-8,,,2nd Floor,7A:04:0E:F2:09:E1,CIT-WiFi,ECE-8 Classroom AP
+ECE-9,,,3rd Floor,16:8F:E9:3C:7E:8A,CIT-WiFi,ECE-9 Classroom AP
+EEE-1,,,Ground Floor,52:65:D1:C3:E5:DF,CIT-Guest,EEE-1 AP
+EEE-10,,,1st Floor,B6:94:9D:41:DF:19,CIT-WiFi,EEE-10 Classroom AP
+EEE-2,,,Ground Floor,A2:EA:73:62:B9:99,CIT-Guest,EEE-2 AP
+EEE-3,,,Ground Floor,4A:03:34:02:69:2A,CIT-Guest,EEE-3 AP
+EEE-4,,,Ground Floor,26:60:A4:3A:03:6C,CIT-Guest,EEE-4 AP
+EEE-5,,,2nd Floor,26:81:7D:EE:18:41,CIT-WiFi,EEE-5 Classroom AP
+EEE-6,,,3rd Floor,4A:F7:B6:E9:BA:B0,CIT-WiFi,EEE-6 Classroom AP
+EEE-7,,,1st Floor,52:E1:C3:E4:77:C9,CIT-WiFi,EEE-7 Classroom AP
+EEE-8,,,2nd Floor,46:EF:E1:3C:9B:95,CIT-WiFi,EEE-8 Classroom AP
+EEE-9,,,3rd Floor,6E:83:F8:EB:ED:B1,CIT-WiFi,EEE-9 Classroom AP
+IT-1,,,Ground Floor,1E:AB:E2:36:35:20,CIT-Guest,IT-1 AP
+IT-10,,,1st Floor,3E:1F:E5:7A:EF:2B,CIT-WiFi,IT-10 Classroom AP
+IT-2,,,Ground Floor,2E:EB:03:2F:96:78,CIT-Guest,IT-2 AP
+IT-3,,,Ground Floor,46:47:82:52:84:9A,CIT-Guest,IT-3 AP
+IT-4,,,Ground Floor,D6:88:76:E2:54:0D,CIT-Guest,IT-4 AP
+IT-5,,,2nd Floor,DA:C6:94:AC:1B:62,CIT-WiFi,IT-5 Classroom AP
+IT-6,,,3rd Floor,96:86:59:6D:B9:44,CIT-WiFi,IT-6 Classroom AP
+IT-7,,,1st Floor,86:DA:4B:46:7C:41,CIT-WiFi,IT-7 Classroom AP
+IT-8,,,2nd Floor,E2:90:75:62:B9:34,CIT-WiFi,IT-8 Classroom AP
+IT-9,,,3rd Floor,3E:8B:C7:57:58:C3,CIT-WiFi,IT-9 Classroom AP
+MCT-1,,,Ground Floor,26:00:93:93:03:81,CIT-Guest,MCT-1 AP
+MCT-10,,,1st Floor,2E:D0:26:62:D9:85,CIT-WiFi,MCT-10 Classroom AP
+MCT-2,,,Ground Floor,1E:20:F3:6C:D3:65,CIT-Guest,MCT-2 AP
+MCT-3,,,Ground Floor,B6:7C:30:B0:4B:56,CIT-Guest,MCT-3 AP
+MCT-4,,,Ground Floor,02:F1:3D:69:31:54,CIT-Guest,MCT-4 AP
+MCT-5,,,2nd Floor,0A:BF:49:7D:29:6B,CIT-WiFi,MCT-5 Classroom AP
+MCT-6,,,3rd Floor,F6:2D:2B:CE:3D:A0,CIT-WiFi,MCT-6 Classroom AP
+MCT-7,,,1st Floor,E6:F7:86:B6:8A:D1,CIT-WiFi,MCT-7 Classroom AP
+MCT-8,,,2nd Floor,B6:A3:6B:57:93:E7,CIT-WiFi,MCT-8 Classroom AP
+MCT-9,,,3rd Floor,9A:F7:CA:6B:00:D5,CIT-WiFi,MCT-9 Classroom AP
+MECH-1,,,Ground Floor,EE:3F:8F:6C:23:89,CIT-Guest,MECH-1 AP
+MECH-10,,,1st Floor,B2:F5:A1:47:B8:61,CIT-WiFi,MECH-10 Classroom AP
+MECH-2,,,Ground Floor,3E:5E:C7:64:E4:40,CIT-Guest,MECH-2 AP
+MECH-3,,,Ground Floor,52:5A:CB:B6:F4:0C,CIT-Guest,MECH-3 AP
+MECH-4,,,Ground Floor,66:38:7E:63:57:5B,CIT-Guest,MECH-4 AP
+MECH-5,,,2nd Floor,9E:93:73:05:2D:69,CIT-WiFi,MECH-5 Classroom AP
+MECH-6,,,3rd Floor,4A:50:D4:99:4E:D6,CIT-WiFi,MECH-6 Classroom AP
+MECH-7,,,1st Floor,5E:2F:F8:64:A1:E8,CIT-WiFi,MECH-7 Classroom AP
+MECH-8,,,2nd Floor,C2:07:C2:85:E3:C9,CIT-WiFi,MECH-8 Classroom AP
+MECH-9,,,3rd Floor,36:53:85:69:26:39,CIT-WiFi,MECH-9 Classroom AP
+VLSI-1,,,Ground Floor,D2:33:B3:C5:B9:93,CIT-Guest,VLSI-1 AP
+VLSI-10,,,1st Floor,DA:F2:C2:11:90:16,CIT-WiFi,VLSI-10 Classroom AP
+VLSI-2,,,Ground Floor,9A:E0:06:4B:38:DE,CIT-Guest,VLSI-2 AP
+VLSI-3,,,Ground Floor,6A:4E:82:A2:22:21,CIT-Guest,VLSI-3 AP
+VLSI-4,,,Ground Floor,52:E6:FA:6A:69:FA,CIT-Guest,VLSI-4 AP
+VLSI-5,,,2nd Floor,E2:A1:26:2D:8F:AB,CIT-WiFi,VLSI-5 Classroom AP
+VLSI-6,,,3rd Floor,D2:A8:30:F8:08:51,CIT-WiFi,VLSI-6 Classroom AP
+VLSI-7,,,1st Floor,BE:68:93:3F:5A:7C,CIT-WiFi,VLSI-7 Classroom AP
+VLSI-8,,,2nd Floor,4E:0F:66:F0:37:70,CIT-WiFi,VLSI-8 Classroom AP
+VLSI-9,,,3rd Floor,BA:39:38:A7:C6:4D,CIT-WiFi,VLSI-9 Classroom AP
+tea time,12.970649,80.041333,Ground Floor,AA:BB:CC:DD:EE:00,CIT-Guest,tea time AP
+hut,12.973179,80.042778,Ground Floor,AA:BB:CC:DD:EE:01,CIT-Guest,hut AP
+c2c,12.974019,80.043958,Ground Floor,AA:BB:CC:DD:EE:02,CIT-Guest,c2c AP
+tea express,12.971697,80.045927,Ground Floor,AA:BB:CC:DD:EE:03,CIT-Guest,tea express AP
+chill out,12.971826,80.043436,Ground Floor,AA:BB:CC:DD:EE:04,CIT-Guest,chill out AP
+pks canteen,12.972256,80.044801,Ground Floor,AA:BB:CC:DD:EE:05,CIT-Guest,pks canteen AP
+10 labs,12.970494,80.044242,Ground Floor,AA:BB:CC:DD:EE:06,CIT-Guest,10 labs AP
+oat,12.969351,80.043249,Ground Floor,AA:BB:CC:DD:EE:07,CIT-Guest,oat AP
+mess,12.974014,80.042894,Ground Floor,AA:BB:CC:DD:EE:08,CIT-Guest,mess AP
+temple,12.971787,80.045143,Ground Floor,AA:BB:CC:DD:EE:09,CIT-Guest,temple AP
+CADENCE,,,Ground Floor,BB:01:CA:DE:NC:E0,CIT-WiFi,CADENCE Lab AP
+KUKA,,,Ground Floor,BB:02:KU:KA:00:01,CIT-WiFi,KUKA Lab AP
+IA,,,1st Floor,BB:03:IA:00:00:01,CIT-WiFi,IA Lab AP
+DRONE,,,1st Floor,BB:04:DR:ON:E0:01,CIT-WiFi,DRONE Lab AP
+BAJA,,,Ground Floor,BB:05:BA:JA:00:01,CIT-WiFi,BAJA Lab AP
+AI,,,2nd Floor,BB:06:A1:00:00:01,CIT-WiFi,AI Lab AP
+PCB,,,2nd Floor,BB:07:PC:B0:00:01,CIT-WiFi,PCB Lab AP
+CLOUD COMPUTING,,,3rd Floor,BB:08:CC:00:00:01,CIT-WiFi,CLOUD COMPUTING Lab AP
+IOT,,,3rd Floor,BB:09:10:T0:00:01,CIT-WiFi,IOT Lab AP
+EMBEDED,,,Ground Floor,BB:10:EM:BE:D0:01,CIT-WiFi,EMBEDED Lab AP
