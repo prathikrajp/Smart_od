@@ -112,7 +112,7 @@ const ScanCheckin = ({ user }) => {
     const activeSessionRef = useRef(null); // tracks if a session is active
 
     // Face Recognition States
-    const [faceVerified, setFaceVerified] = useState(false);
+    const [faceVerified, setFaceVerified] = useState(IS_MOCK_MODE); // Auto-verify in mock mode
     const [isFaceScanning, setIsFaceScanning] = useState(false);
     const [faceStatus, setFaceStatus] = useState("Face Verification Required");
     const [modelsLoaded, setModelsLoaded] = useState(false);
@@ -450,7 +450,7 @@ const ScanCheckin = ({ user }) => {
                         </div>
                     ) : result === null ? (
                         <div className="text-center p-8 w-full h-full flex flex-col items-center justify-center">
-                            {!faceVerified ? (
+                            {(!faceVerified && !IS_MOCK_MODE) ? (
                                 <div className="w-full flex flex-col items-center">
                                     <div className="w-64 h-64 border-2 border-dashed border-gray-800 rounded-[3rem] mb-10 flex items-center justify-center bg-white/5 relative group overflow-hidden">
                                         {isFaceScanning ? (
@@ -476,7 +476,9 @@ const ScanCheckin = ({ user }) => {
                                 <div className="w-full space-y-4 px-4 animate-scale-in">
                                     <div className="flex items-center justify-center mb-6 space-x-2 text-emerald-500">
                                         <CheckCircle2 size={24} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">Identity Verified - Hardware Active</span>
+                                        <span className="text-[10px] font-black uppercase tracking-widest">
+                                            {IS_MOCK_MODE ? "Mock Mode Active - Check-in Enabled" : "Identity Verified - Hardware Active"}
+                                        </span>
                                     </div>
                                     {/* Option 1: Mock Lab */}
                                     {canScanLab ? (

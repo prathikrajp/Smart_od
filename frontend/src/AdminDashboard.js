@@ -24,6 +24,7 @@ const AdminDashboard = ({ user }) => {
     const [studentPortfolios, setStudentPortfolios] = useState({}); // Cache for fetched portfolios
     const [viewingWork, setViewingWork] = useState(null);
     const [tick, setTick] = useState(0); // forces live elapsed-time re-render
+    const [successMessage, setSuccessMessage] = useState(null);
 
     useEffect(() => {
         // 0. Load Location Data from API
@@ -113,14 +114,26 @@ const AdminDashboard = ({ user }) => {
                 setLivePresence(presence);
 
                 const allRequests = await odApi.getAllRequests();
-                const safeAllReqs = Array.isArray(allRequests) ? allRequests : [];
                 const approvedMap = {};
+                let filteredReqs = [];
+                const role = user?.role;
+
                 safeAllReqs.forEach(r => {
                     if (r && r.status === 'APPROVED') {
                         approvedMap[r.studentId] = r.labName;
                     }
+                    // Sync pending requests too
+                    if (role === 'LAB_INCHARGE' && r.labName === user?.labName && r.status === 'PENDING_LAB') {
+                        filteredReqs.push(r);
+                    } else if (role === 'ADVISOR' && r.className === user?.className && r.status === 'PENDING_ADVISOR') {
+                        filteredReqs.push(r);
+                    } else if (role === 'HOD' && r.department === user?.department && r.status === 'FORWARDED_TO_HOD') {
+                        filteredReqs.push(r);
+                    }
                 });
                 setApprovedODs(approvedMap);
+                setPendingRequests(filteredReqs);
+                setGlobalRequests(safeAllReqs);
             } catch (err) { console.error(err); }
         };
 
@@ -157,24 +170,36 @@ const AdminDashboard = ({ user }) => {
             await odApi.updateStatus(requestId, updates);
 
             // 3. Refresh Local View
-            setPendingRequests((pendingRequests || []).filter(r => r && r.id !== requestId));
+            setPendingRequests((prev) => (prev || []).filter(r => r && r.id !== requestId));
+            setSuccessMessage(`Order of Duty successfully updated!`);
+            setTimeout(() => setSuccessMessage(null), 3500);
         } catch (err) {
             console.error("Update failed:", err);
             setError("Failed to update status. Please try again.");
         }
     };
 
-    const handleApprove = (req) => {
-        let nextStatus = 'DENIED';
-        if (req.status === 'PENDING_LAB') {
-            nextStatus = 'PENDING_ADVISOR';
-        } else if (req.status === 'PENDING_ADVISOR') {
-            const isHighCGPA = (req.cgpa || 0) >= 8;
-            nextStatus = (isHighCGPA || req.priorityScore >= 75) ? 'APPROVED' : 'FORWARDED_TO_HOD';
-        } else if (req.status === 'FORWARDED_TO_HOD') {
-            nextStatus = 'APPROVED';
+    const handleApprove = async (req) => {
+        try {
+            if (!req?.id) {
+                setError("Invalid request data. Please refresh.");
+                return;
+            }
+
+            let nextStatus = 'DENIED';
+            if (req.status === 'PENDING_LAB') {
+                nextStatus = 'PENDING_ADVISOR';
+            } else if (req.status === 'PENDING_ADVISOR') {
+                const isHighCGPA = (req.cgpa || 0) >= 8;
+                nextStatus = (isHighCGPA || req.priorityScore >= 75) ? 'APPROVED' : 'FORWARDED_TO_HOD';
+            } else if (req.status === 'FORWARDED_TO_HOD') {
+                nextStatus = 'APPROVED';
+            }
+            await updateRequestStatus(req.id, req.studentId, nextStatus);
+        } catch (err) {
+            console.error("Approval failed:", err);
+            setError("Failed to approve request. Please try again.");
         }
-        updateRequestStatus(req.id, req.studentId, nextStatus);
     };
 
     const handleDeny = async (req) => {
@@ -347,6 +372,14 @@ const AdminDashboard = ({ user }) => {
 
     return (
         <div className="max-w-6xl mx-auto py-8">
+            {successMessage && (
+                <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 animate-bounce">
+                    <div className="bg-emerald-600 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center space-x-3 border border-emerald-400/30">
+                        <CheckCircle2 size={24} />
+                        <span className="font-black uppercase tracking-widest text-xs">{successMessage}</span>
+                    </div>
+                </div>
+            )}
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-10">
                 <div>
                     <h2 className="text-4xl font-extrabold text-white tracking-tight">Management Dashboard</h2>
