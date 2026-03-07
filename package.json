@@ -1,0 +1,12 @@
+{
+  "name": "smartod-root",
+  "version": "1.0.0",
+  "description": "SmartOD monorepo root – orchestrates frontend build for Vercel",
+  "scripts": {
+    "install": "cd frontend && npm install",
+    "build": "cd frontend && npm run build"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
