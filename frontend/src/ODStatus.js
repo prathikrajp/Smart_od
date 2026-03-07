@@ -161,6 +161,7 @@ const ODStatus = ({ user }) => {
 
         const newRequest = {
             ...formData,
+            id: `OD-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Required for AdminDashboard action mapping
             studentId: user.id,
             studentName: user.name,
             cgpa: cgpa,
