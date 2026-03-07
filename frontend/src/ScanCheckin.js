@@ -116,6 +116,7 @@ const ScanCheckin = ({ user }) => {
     const [isFaceScanning, setIsFaceScanning] = useState(false);
     const [faceStatus, setFaceStatus] = useState("Face Verification Required");
     const [modelsLoaded, setModelsLoaded] = useState(false);
+    const referenceDescriptor = useRef(null);
     const videoRef = React.useRef(null);
 
     // Keep activeOD in a ref so the clock callback can read the latest value
@@ -247,25 +248,67 @@ const ScanCheckin = ({ user }) => {
         setFaceStatus("Initializing Camera...");
 
         try {
+            // ─── 1. Identify and Load Reference Face ────────────────────────────
+            setFaceStatus("Loading Reference Bio-data...");
+            const studentId = user.id;
+            const studentName = user.name;
+            
+            // Filenames are inconsistent: "Name ID .jpeg", "NameID.jpeg", etc.
+            // We'll try to find any file in /faces/ that contains our ID
+            const faceFiles = [
+                `Jerlin 25EC001 .jpeg`,
+                `Sabareesh Kumar 25EC002 .jpeg`,
+                `Prathik Raj 25EC003 .jpeg`,
+                `Soundarya 25EC004.jpeg`,
+                `Finn Miller  25EC005 .jpeg`
+            ];
+            
+            const myFaceFile = faceFiles.find(f => f.includes(studentId));
+            
+            if (!myFaceFile) {
+                setFaceStatus("Reference Photo Not Found");
+                setTimeout(() => setIsFaceScanning(false), 3000);
+                return;
+            }
+
+            if (!referenceDescriptor.current) {
+                const img = await window.faceapi.fetchImage(`/faces/${encodeURIComponent(myFaceFile)}`);
+                const fullDesc = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                if (!fullDesc) {
+                    setFaceStatus("Reference Photo Quality Low");
+                    setTimeout(() => setIsFaceScanning(false), 3000);
+                    return;
+                }
+                referenceDescriptor.current = fullDesc.descriptor;
+            }
+
+            // ─── 2. Start Camera Feed ──────────────────────────────────────────
             const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
             if (videoRef.current) {
                 videoRef.current.srcObject = stream;
             }
 
-            setFaceStatus("Scanning Face...");
+            setFaceStatus("Verifying Identity...");
 
             const detectFace = async () => {
                 if (!videoRef.current || !window.faceapi || !modelsLoaded) return;
 
-                const detections = await window.faceapi.detectAllFaces(videoRef.current, new window.faceapi.TinyFaceDetectorOptions());
+                const detection = await window.faceapi.detectSingleFace(videoRef.current, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
 
-                if (detections.length > 0) {
-                    setFaceStatus("Identity Verified!");
-                    setTimeout(() => {
-                        stream.getTracks().forEach(track => track.stop());
-                        setFaceVerified(true);
-                        setIsFaceScanning(false);
-                    }, 1500);
+                if (detection && referenceDescriptor.current) {
+                    const distance = window.faceapi.euclideanDistance(detection.descriptor, referenceDescriptor.current);
+                    // Standard threshold for face-api.js is 0.6. Lower is stricter.
+                    if (distance < 0.6) {
+                        setFaceStatus("Verification Success!");
+                        setTimeout(() => {
+                            stream.getTracks().forEach(track => track.stop());
+                            setFaceVerified(true);
+                            setIsFaceScanning(false);
+                        }, 1500);
+                    } else {
+                        setFaceStatus("Identity Match Failed");
+                        requestAnimationFrame(detectFace);
+                    }
                 } else {
                     requestAnimationFrame(detectFace);
                 }
@@ -273,7 +316,8 @@ const ScanCheckin = ({ user }) => {
 
             detectFace();
         } catch (err) {
-            setFaceStatus("Camera Access Denied");
+            console.error(err);
+            setFaceStatus("Verification System Error");
             setIsFaceScanning(false);
         }
     };
