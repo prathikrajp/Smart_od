@@ -25,6 +25,7 @@ app.use('/api/od-requests', require('./routes/od_requests'));
 app.use('/api/sessions', require('./routes/sessions'));
 app.use('/api/presence', require('./routes/presence'));
 app.use('/api/uploads', require('./routes/uploads'));
+app.use('/api/faces', require('./routes/faces'));
 app.use('/api/violations', require('./routes/misc').violationsRouter);
 app.use('/api/metadata', require('./routes/misc').metadataRouter);
 app.use('/api/working-time', require('./routes/misc').workingTimeRouter);

@@ -59,7 +59,8 @@ const Notifications = ({ user }) => {
                     
                     filtered = [...odNotifs, ...signInNotifs];
                 } else if (user.role === 'ADVISOR') {
-                    filtered = safeRequests
+                    // 1. Pending OD Requests
+                    const odNotifs = safeRequests
                         .filter(r => r.className === user.className && r.status === 'PENDING_ADVISOR')
                         .map(r => ({
                             id: `${r.id}_pending_advisor`,
@@ -68,6 +69,19 @@ const Notifications = ({ user }) => {
                             status: 'PENDING',
                             time: r.requestedAt
                         }));
+
+                    // 2. Digital Sign-ins (for students in this advisor's class)
+                    const signInNotifs = safePresence
+                        .filter(p => p.advisorName === user.name && p.type === 'LAB')
+                        .map(p => ({
+                            id: `advisor_signin_${p.studentId}_${p.timestamp}`,
+                            title: 'Student Lab Entry',
+                            message: `${p.studentName || p.studentId} digitally signed in into ${p.name} at ${new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+                            status: 'APPROVED',
+                            time: p.timestamp
+                        }));
+
+                    filtered = [...odNotifs, ...signInNotifs];
                 } else if (user.role === 'HOD') {
                     // Include both pending validation AND auto-approvals for High CGPA
                     filtered = safeRequests

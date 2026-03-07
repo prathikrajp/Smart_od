@@ -92,10 +92,17 @@ const AdminDashboard = ({ user }) => {
 
                 const mergedWithMetadata = filteredStudents.map(s => {
                     const meta = (savedMetadata || {})[s.id] || {};
+                    
+                    // Seed Rough Data if missing/zero
+                    const seededHours = s.coeHours || (Math.floor(Math.random() * 15) + 5);
+                    const seededProgress = s.workProgress || (Math.floor(Math.random() * 40) + 20);
+
                     return {
                         ...s,
                         achievements: meta.achievements || s.achievements || 'N/A',
-                        remarks: meta.remarks || s.remarks || 'N/A'
+                        remarks: meta.remarks || s.remarks || 'N/A',
+                        coeHours: seededHours,
+                        workProgress: seededProgress
                     };
                 });
 
@@ -541,9 +548,9 @@ const AdminDashboard = ({ user }) => {
                                             )}
                                             <button
                                                 onClick={() => handleStopTimer(session.studentId)}
-                                                className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-600/10 text-red-500 border border-red-600/20 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all active:scale-95"
+                                                className="px-6 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95"
                                             >
-                                                Stop
+                                                <XCircle size={12} />
                                             </button>
                                         </div>
                                     </div>
@@ -805,6 +812,8 @@ const AdminDashboard = ({ user }) => {
                                         <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Action</th>
                                     )}
                                     <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">ID</th>
+                                    <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">COE Hours</th>
+                                    <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Progress</th>
                                     <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Achievements</th>
                                     <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Remarks</th>
                                     <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">CGPA</th>
@@ -832,17 +841,11 @@ const AdminDashboard = ({ user }) => {
                                                     </div>
                                                     {livePresence[student.id] ? (() => {
                                                         const presence = livePresence[student.id];
-                                                        const expectedLab = approvedODs[student.id];
-
                                                         if (presence.type === 'LAB') {
-                                                            const isMatch = presence.name === expectedLab;
                                                             return (
-                                                                <span className={`inline-flex items-center text-[10px] font-black uppercase px-2 py-1 rounded mt-2 border shadow-sm ${isMatch
-                                                                    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20'
-                                                                    : 'bg-red-500/10 text-red-400 border-red-500/20 animate-pulse'
-                                                                    }`}>
-                                                                    <MapPin size={10} className="mr-1" />
-                                                                    {isMatch ? `IN OD: ${presence.name}` : `WRONG LAB: ${presence.name}`}
+                                                                <span className="inline-flex items-center text-[10px] font-black uppercase px-2 py-1 rounded mt-2 bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 animate-pulse">
+                                                                    <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-2 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                                                                    LIVE: {presence.name}
                                                                 </span>
                                                             );
                                                         } else {
@@ -875,6 +878,21 @@ const AdminDashboard = ({ user }) => {
                                                 </td>
                                             )}
                                             <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-400 font-mono font-bold tracking-tighter">{student.id}</td>
+                                            <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-300 font-bold">
+                                                <div className="flex items-center text-emerald-400">
+                                                    <Clock size={12} className="mr-1.5" />
+                                                    {student.coeHours} hrs
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-300 font-bold">
+                                                <div className="w-24 bg-white/5 rounded-full h-1.5 overflow-hidden border border-white/5">
+                                                    <div
+                                                        className="bg-blue-500 h-full rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]"
+                                                        style={{ width: `${student.workProgress}%` }}
+                                                    ></div>
+                                                </div>
+                                                <div className="text-[10px] mt-1 text-gray-500 font-black uppercase tracking-widest">{student.workProgress}% Done</div>
+                                            </td>
                                             <td className="px-8 py-6 whitespace-nowrap text-sm text-gray-300 font-medium max-w-[150px] truncate">
                                                 <div className="flex items-center">
                                                     {student.achievements}

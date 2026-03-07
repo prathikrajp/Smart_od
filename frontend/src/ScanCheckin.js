@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiCamera as Camera, FiCheckCircle as CheckCircle2, FiXCircle as XCircle, FiInfo, FiClock, FiMapPin, FiWifi } from 'react-icons/fi';
 import { MdFingerprint as Fingerprint } from 'react-icons/md';
 import { presenceApi, sessionApi, odApi, dataApi } from './api';
+import { Html5Qrcode } from 'html5-qrcode';
 
 // ─── GPS Geofencing Configuration ─────────────────────────────────────────────
 const GPS_RADIUS_METERS = 100; // Default radius if not specified per-lab
@@ -20,7 +21,7 @@ const haversineDistance = (lat1, lng1, lat2, lng2) => {
 };
 
 // ─── Timer Configuration ───────────────────────────────────────────────────────
-const IS_MOCK_MODE = true;           // true = mock (10-min cycle), false = real (daily window)
+const IS_MOCK_MODE = false;          // true = mock (10-min cycle), false = real (daily window)
 const MOCK_WINDOW_SECONDS = 60;      // Mock: how long the window stays open (seconds)
 const MOCK_CYCLE_SECONDS = 10 * 60; // Mock: repeat every 10 minutes
 const REAL_WINDOW_MINUTES = 30;      // Real: window duration after OD inTime
@@ -111,11 +112,17 @@ const ScanCheckin = ({ user }) => {
     const labMetadataRef = useRef(null);
     const activeSessionRef = useRef(null); // tracks if a session is active
 
+    // QR Scanner States
+    const [isQrScanning, setIsQrScanning] = useState(false);
+    const qrScannerRef = useRef(null);
+    const qrRegionId = "qr-reader";
+
     // Face Recognition States
     const [faceVerified, setFaceVerified] = useState(IS_MOCK_MODE); // Auto-verify in mock mode
     const [isFaceScanning, setIsFaceScanning] = useState(false);
     const [faceStatus, setFaceStatus] = useState("Face Verification Required");
     const [modelsLoaded, setModelsLoaded] = useState(false);
+    const [faceAttempts, setFaceAttempts] = useState(0); // Added for 3-attempt limit
     const referenceDescriptor = useRef(null);
     const videoRef = React.useRef(null);
 
@@ -244,82 +251,151 @@ const ScanCheckin = ({ user }) => {
     }, [user.id, user.className]);
 
     const startFaceVerification = async () => {
+        if (faceAttempts >= 3) {
+            setFaceStatus("Access Blocked: Max Attempts Reached");
+            return;
+        }
+
         setIsFaceScanning(true);
-        setFaceStatus("Initializing Camera...");
+        setFaceStatus("Starting Camera...");
 
         try {
-            // ─── 1. Identify and Load Reference Face ────────────────────────────
-            setFaceStatus("Loading Reference Bio-data...");
-            const studentId = user.id;
-            const studentName = user.name;
+            // ─── 1. Start Camera Feed First (Ensures UI feedback is fast) ────────
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } 
+            });
             
-            // Filenames are inconsistent: "Name ID .jpeg", "NameID.jpeg", etc.
-            // We'll try to find any file in /faces/ that contains our ID
-            const faceFiles = [
-                `Jerlin 25EC001 .jpeg`,
-                `Sabareesh Kumar 25EC002 .jpeg`,
-                `Prathik Raj 25EC003 .jpeg`,
-                `Soundarya 25EC004.jpeg`,
-                `Finn Miller  25EC005 .jpeg`
-            ];
-            
-            const myFaceFile = faceFiles.find(f => f.includes(studentId));
-            
-            if (!myFaceFile) {
-                setFaceStatus("Reference Photo Not Found");
-                setTimeout(() => setIsFaceScanning(false), 3000);
-                return;
+            // Give React a moment to render the <video> element
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            if (videoRef.current) {
+                videoRef.current.srcObject = stream;
+            } else {
+                // Retry once if ref isn't ready
+                await new Promise(resolve => setTimeout(resolve, 500));
+                if (videoRef.current) videoRef.current.srcObject = stream;
+                else throw new Error("Video element mounting failed");
             }
 
+            // ─── 2. Search and Load Reference Face in Background ─────────────────
+            setFaceStatus("Loading Reference Bio-data...");
+            const studentId = user.id;
+
             if (!referenceDescriptor.current) {
-                const img = await window.faceapi.fetchImage(`/faces/${encodeURIComponent(myFaceFile)}`);
+                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+                const img = await window.faceapi.fetchImage(`${apiUrl}/faces/${studentId}`);
                 const fullDesc = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+                
                 if (!fullDesc) {
-                    setFaceStatus("Reference Photo Quality Low");
-                    setTimeout(() => setIsFaceScanning(false), 3000);
+                    setFaceStatus("Ref Photo Quality Low");
                     return;
                 }
                 referenceDescriptor.current = fullDesc.descriptor;
             }
 
-            // ─── 2. Start Camera Feed ──────────────────────────────────────────
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-            if (videoRef.current) {
-                videoRef.current.srcObject = stream;
-            }
-
-            setFaceStatus("Verifying Identity...");
-
-            const detectFace = async () => {
-                if (!videoRef.current || !window.faceapi || !modelsLoaded) return;
-
-                const detection = await window.faceapi.detectSingleFace(videoRef.current, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
-
-                if (detection && referenceDescriptor.current) {
-                    const distance = window.faceapi.euclideanDistance(detection.descriptor, referenceDescriptor.current);
-                    // Standard threshold for face-api.js is 0.6. Lower is stricter.
-                    if (distance < 0.6) {
-                        setFaceStatus("Verification Success!");
-                        setTimeout(() => {
-                            stream.getTracks().forEach(track => track.stop());
-                            setFaceVerified(true);
-                            setIsFaceScanning(false);
-                        }, 1500);
-                    } else {
-                        setFaceStatus("Identity Match Failed");
-                        requestAnimationFrame(detectFace);
-                    }
-                } else {
-                    requestAnimationFrame(detectFace);
-                }
-            };
-
-            detectFace();
+            setFaceStatus("Camera Live. Click Capture & Verify.");
         } catch (err) {
-            console.error(err);
-            setFaceStatus("Verification System Error");
+            console.error("Camera/Face init error:", err);
+            setFaceStatus(`Error: ${err.message || 'Access Denied'}`);
             setIsFaceScanning(false);
+            
+            // Clean up stream if it was started
+            try {
+                const stream = videoRef.current?.srcObject;
+                if (stream) stream.getTracks().forEach(track => track.stop());
+            } catch (e) {}
         }
+    };
+
+    const handleCaptureAndVerify = async () => {
+        if (!videoRef.current || !window.faceapi || !modelsLoaded || !referenceDescriptor.current) return;
+
+        setFaceStatus("Capturing & Verifying...");
+        
+        try {
+            const detections = await window.faceapi.detectSingleFace(videoRef.current, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+
+            if (detections) {
+                const distance = window.faceapi.euclideanDistance(detections.descriptor, referenceDescriptor.current);
+                console.log("Matching distance:", distance);
+
+                if (distance < 0.6) {
+                    setFaceStatus("Verification Success!");
+                    setTimeout(() => {
+                        const stream = videoRef.current.srcObject;
+                        if (stream) stream.getTracks().forEach(track => track.stop());
+                        setFaceVerified(true);
+                        setIsFaceScanning(false);
+                    }, 1500);
+                } else {
+                    const newAttempts = faceAttempts + 1;
+                    setFaceAttempts(newAttempts);
+                    if (newAttempts >= 3) {
+                        setFaceStatus("Access Blocked: 3 Failed Matches");
+                        const stream = videoRef.current.srcObject;
+                        if (stream) stream.getTracks().forEach(track => track.stop());
+                        setIsFaceScanning(false);
+                    } else {
+                        setFaceStatus(`Match Failed (Attempt ${newAttempts}/3)`);
+                    }
+                }
+            } else {
+                setFaceStatus("No Face Detected! Please try again.");
+            }
+        } catch (err) {
+            console.error("Capture verify error:", err);
+            setFaceStatus("Verification Error. Try again.");
+        }
+    };
+
+    const handleRescan = () => {
+        const stream = videoRef.current?.srcObject;
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        setIsFaceScanning(false);
+        setFaceStatus("Face Verification Required");
+    };
+
+    const startQrScanner = async () => {
+        setIsQrScanning(true);
+        setResult(null);
+        
+        // Give React a moment to render the scanner div
+        setTimeout(async () => {
+            try {
+                const html5QrCode = new Html5Qrcode(qrRegionId);
+                qrScannerRef.current = html5QrCode;
+
+                const qrConfig = { fps: 10, qrbox: { width: 250, height: 250 } };
+                
+                await html5QrCode.start(
+                    { facingMode: "environment" }, 
+                    qrConfig, 
+                    (decodedText) => {
+                        console.log("QR Decoded:", decodedText);
+                        stopQrScanner();
+                        handleCheckIn(decodedText);
+                    },
+                    (errorMessage) => {
+                        // ignore noise
+                    }
+                );
+            } catch (err) {
+                console.error("QR Scanner start error:", err);
+                setIsQrScanning(false);
+            }
+        }, 500);
+    };
+
+    const stopQrScanner = async () => {
+        if (qrScannerRef.current && qrScannerRef.current.isScanning) {
+            try {
+                await qrScannerRef.current.stop();
+                await qrScannerRef.current.clear();
+            } catch (err) {
+                console.error("QR Scanner stop error:", err);
+            }
+        }
+        setIsQrScanning(false);
     };
 
     const handleCheckIn = (scannedData) => {
@@ -334,6 +410,8 @@ const ScanCheckin = ({ user }) => {
                     presenceApi.reportPresence({
                         studentId: user.id,
                         studentName: user.name,
+                        advisorName: user.classAdvisorName, // Added for dual notifications
+                        className: user.className,           // Added for dual notifications
                         type: data.type,
                         name: data.name,
                         facultyId: data.id,
@@ -357,7 +435,8 @@ const ScanCheckin = ({ user }) => {
                                         }
                                         : null;
 
-                                    await sessionApi.startSession(user.id, {
+                                    await sessionApi.startSession({
+                                        studentId: user.id,
                                         labName: data.name,
                                         studentName: user.name,
                                         startedBy: 'QR_SCAN',
@@ -387,6 +466,10 @@ const ScanCheckin = ({ user }) => {
 
                     setLocationInfo(data);
                     setResult('success');
+                    
+                    // Reset Face Verification so it must be done again for next scan (e.g. going from Lab to Class)
+                    setFaceVerified(false);
+                    setFaceStatus("Face Verification Required");
                 } else {
                     setResult('error_location');
                 }
@@ -399,7 +482,8 @@ const ScanCheckin = ({ user }) => {
 
     // Derive whether each button should be active
     const canScanLab = scanWindow.open && activeOD && labMetadata && !activeOD.scanned;
-    const canScanClass = scanWindow.open && classMetadata && (!activeOD || !activeOD.scanned);
+    // Class scans are always open if the metadata is available, but still require Face-ID verification
+    const canScanClass = !!classMetadata; 
 
     // Window indicator color
     const windowColor = scanWindow.open
@@ -485,8 +569,8 @@ const ScanCheckin = ({ user }) => {
             </div>
 
             {/* Scanner Body */}
-            <div className="bg-[#141417] rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden relative">
-                <div className="bg-gray-900 aspect-square relative flex items-center justify-center">
+            <div className="bg-[#141417] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden relative">
+                <div className="bg-gray-900 aspect-square sm:aspect-auto sm:min-h-[400px] relative flex items-center justify-center">
                     {scanning ? (
                         <div className="absolute inset-0 bg-[#0a0a0b]/90 flex flex-col items-center justify-center backdrop-blur-md z-30">
                             <div className="w-20 h-20 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-6"></div>
@@ -496,85 +580,83 @@ const ScanCheckin = ({ user }) => {
                         <div className="text-center p-8 w-full h-full flex flex-col items-center justify-center">
                             {(!faceVerified && !IS_MOCK_MODE) ? (
                                 <div className="w-full flex flex-col items-center">
-                                    <div className="w-64 h-64 border-2 border-dashed border-gray-800 rounded-[3rem] mb-10 flex items-center justify-center bg-white/5 relative group overflow-hidden">
+                                    <div className="w-48 h-48 sm:w-64 sm:h-64 border-2 border-dashed border-gray-800 rounded-[2.5rem] sm:rounded-[3rem] mb-6 sm:mb-10 flex items-center justify-center bg-white/5 relative group overflow-hidden">
                                         {isFaceScanning ? (
                                             <video ref={videoRef} autoPlay muted playsInline className="absolute inset-0 w-full h-full object-cover scale-x-[-1]" />
                                         ) : (
-                                            <Camera className="text-gray-700 group-hover:text-blue-500 transition-colors" size={56} />
+                                            <Camera className="text-gray-700 group-hover:text-blue-500 transition-colors" size={48} />
                                         )}
-                                        <div className="absolute inset-8 border-2 border-blue-500/20 rounded-3xl animate-pulse pointer-events-none"></div>
-                                        <div className="absolute inset-0 border-[16px] border-[#141417] rounded-[3rem] pointer-events-none"></div>
+                                        <div className="absolute inset-6 sm:inset-8 border-2 border-blue-500/20 rounded-3xl animate-pulse pointer-events-none"></div>
+                                        <div className="absolute inset-0 border-[12px] sm:border-[16px] border-[#141417] rounded-[2.5rem] sm:rounded-[3rem] pointer-events-none"></div>
                                     </div>
-                                    <p className={`text-[10px] font-black uppercase tracking-[0.2em] mb-8 ${faceStatus.includes('Verified') ? 'text-emerald-500' : 'text-gray-500'}`}>
+                                    <p className={`text-[9px] sm:text-[10px] font-black uppercase tracking-[0.2em] mb-6 sm:mb-8 ${faceStatus.includes('Verified') ? 'text-emerald-500' : 'text-gray-500'}`}>
                                         {faceStatus}
                                     </p>
-                                    <button
-                                        onClick={startFaceVerification}
-                                        disabled={isFaceScanning || !modelsLoaded}
-                                        className="w-full py-5 bg-white text-black rounded-2xl text-[11px] font-black shadow-xl transition-all active:scale-95 uppercase tracking-[0.15em] disabled:opacity-30"
-                                    >
-                                        {!modelsLoaded ? 'Loading Models...' : 'Verify My Face First'}
-                                    </button>
+                                    
+                                    {isFaceScanning ? (
+                                        <div className="w-full flex flex-col sm:flex-row gap-3">
+                                            <button
+                                                onClick={handleCaptureAndVerify}
+                                                className="flex-1 py-4 sm:py-5 bg-blue-600 text-white rounded-2xl text-[10px] sm:text-[11px] font-black shadow-xl transition-all active:scale-95 uppercase tracking-[0.15em]"
+                                            >
+                                                Capture & Verify
+                                            </button>
+                                            <button
+                                                onClick={handleRescan}
+                                                className="px-6 sm:px-8 py-4 sm:py-5 bg-white/5 text-gray-400 border border-white/5 rounded-2xl text-[10px] sm:text-[11px] font-black transition-all active:scale-95 uppercase tracking-[0.15em]"
+                                            >
+                                                Rescan
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={startFaceVerification}
+                                            disabled={isFaceScanning || !modelsLoaded}
+                                            className="w-full py-5 bg-white text-black rounded-2xl text-[11px] font-black shadow-xl transition-all active:scale-95 uppercase tracking-[0.15em] disabled:opacity-30"
+                                        >
+                                            {!modelsLoaded ? 'Loading Models...' : 'Verify My Face First'}
+                                        </button>
+                                    )}
                                 </div>
                             ) : (
                                 <div className="w-full space-y-4 px-4 animate-scale-in">
-                                    <div className="flex items-center justify-center mb-6 space-x-2 text-emerald-500">
-                                        <CheckCircle2 size={24} />
-                                        <span className="text-[10px] font-black uppercase tracking-widest">
-                                            {IS_MOCK_MODE ? "Mock Mode Active - Check-in Enabled" : "Identity Verified - Hardware Active"}
-                                        </span>
-                                    </div>
-                                    {/* Option 1: Mock Lab */}
-                                    {canScanLab ? (
-                                        <button
-                                            onClick={() => {
-                                                const labName = activeOD.labName;
-                                                const normalized = labName.replace(/\s+LAB$/, '').trim();
-                                                handleCheckIn(JSON.stringify({
-                                                    type: 'LAB',
-                                                    name: labName,
-                                                    id: activeOD.labInchargeId || 'LAB001',
-                                                    floor: labMetadata?.floor || 'Ground Floor',
-                                                    bssid: labMetadata?.bssid || 'BB:01:CA:DE:NC:E0'
-                                                }));
-                                            }}
-                                            className="w-full py-5 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl text-[11px] font-black shadow-xl shadow-blue-900/40 transition-all active:scale-95 uppercase tracking-[0.15em] flex flex-col items-center"
-                                        >
-                                            <span>{IS_MOCK_MODE ? 'Mock Scanner for Lab' : 'Scanner for Lab'}</span>
-                                            <span className="text-[9px] opacity-70 font-bold mt-1 tracking-normal">{activeOD.labName} • {labMetadata?.bssid || 'Hardware ID'}</span>
-                                        </button>
-                                    ) : (
-                                        <div className="w-full py-5 bg-white/5 text-gray-600 rounded-2xl text-[11px] font-black border border-white/5 uppercase tracking-[0.15em] flex flex-col items-center">
-                                            <span>{IS_MOCK_MODE ? 'Mock Scanner for Lab' : 'Scanner for Lab'} (Inactive)</span>
-                                            {activeOD?.scanned
-                                                ? <span className="text-[8px] text-emerald-500 mt-1 opacity-50 italic">Scan Already Recorded — Timer Running</span>
-                                                : !scanWindow.open && <span className="text-[8px] text-amber-400 mt-1 opacity-70 italic">{scanWindow.label}</span>
-                                            }
+                                    {isQrScanning ? (
+                                        <div className="w-full flex flex-col items-center">
+                                            <div id={qrRegionId} className="w-full aspect-square bg-black rounded-3xl overflow-hidden border border-white/10 mb-6"></div>
+                                            <button
+                                                onClick={stopQrScanner}
+                                                className="w-full py-4 bg-red-500/10 text-red-500 rounded-2xl text-[11px] font-black border border-red-500/20 uppercase tracking-[0.15em] transition-all active:scale-95"
+                                            >
+                                                Cancel QR Scan
+                                            </button>
                                         </div>
-                                    )}
-
-                                    {/* Option 2: Mock Class */}
-                                    {canScanClass ? (
-                                        <button
-                                            onClick={() => handleCheckIn(JSON.stringify({
-                                                type: 'CLASS',
-                                                name: user.className,
-                                                id: 'ADV_DEFAULT',
-                                                floor: classMetadata.floor || '1st Floor',
-                                                bssid: classMetadata.bssid || 'N/A'
-                                            }))}
-                                            className="w-full py-5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-500 rounded-2xl text-[11px] font-black border border-emerald-500/30 transition-all active:scale-95 uppercase tracking-[0.15em] flex flex-col items-center"
-                                        >
-                                            <span>{IS_MOCK_MODE ? 'Mock Scanner for Class' : 'Scanner for Class'}</span>
-                                            <span className="text-[9px] opacity-70 font-bold mt-1 tracking-normal">{user.className} • {classMetadata.bssid}</span>
-                                        </button>
                                     ) : (
-                                        <div className="w-full py-5 bg-white/5 text-gray-600 rounded-2xl text-[11px] font-black border border-white/5 uppercase tracking-[0.15em] flex flex-col items-center">
-                                            <span>{IS_MOCK_MODE ? 'Mock Scanner for Class' : 'Scanner for Class'} (Inactive)</span>
-                                            {activeOD?.scanned
-                                                ? <span className="text-[8px] text-emerald-500 mt-1 opacity-50 italic">Scan Already Recorded</span>
-                                                : !scanWindow.open && <span className="text-[8px] text-amber-400 mt-1 opacity-70 italic">{scanWindow.label}</span>
-                                            }
+                                        <div className="w-full space-y-4">
+                                            <div className="flex items-center justify-center mb-6 space-x-2 text-emerald-500">
+                                                <CheckCircle2 size={24} />
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-center">
+                                                    Identity Verified - Face Match Confirmed
+                                                </span>
+                                            </div>
+                                            
+                                            <button
+                                                onClick={startQrScanner}
+                                                className="w-full py-6 bg-blue-600 hover:bg-blue-500 text-white rounded-3xl text-[13px] font-black shadow-2xl shadow-blue-900/40 transition-all active:scale-95 uppercase tracking-[0.2em] flex flex-col items-center border border-blue-400/20"
+                                            >
+                                                <Camera className="mb-2" size={24} />
+                                                <span>Open QR Scanner</span>
+                                                <span className="text-[9px] opacity-70 font-bold mt-1 tracking-normal">Align with Lab/Class QR Code</span>
+                                            </button>
+
+                                            {(canScanLab || canScanClass) && (
+                                                <div className="pt-4 border-t border-white/5">
+                                                    <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest text-center mb-1">Available Resources</p>
+                                                    <div className="flex justify-center gap-2 flex-wrap">
+                                                        {canScanLab && <span className="px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-[8px] font-black uppercase border border-blue-500/20">{activeOD?.labName}</span>}
+                                                        {canScanClass && <span className="px-3 py-1 bg-emerald-500/10 text-emerald-400 rounded-full text-[8px] font-black uppercase border border-emerald-500/20">{user.className}</span>}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
