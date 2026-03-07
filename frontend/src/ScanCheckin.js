@@ -282,7 +282,7 @@ const ScanCheckin = ({ user }) => {
             const studentId = user.id;
 
             if (!referenceDescriptor.current) {
-                const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+                const apiUrl = process.env.REACT_APP_API_URL || '/api';
                 const img = await window.faceapi.fetchImage(`${apiUrl}/faces/${studentId}`);
                 const fullDesc = await window.faceapi.detectSingleFace(img, new window.faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
                 
