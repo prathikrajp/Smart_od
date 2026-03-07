@@ -66,6 +66,7 @@ const seedDB = async () => {
                     className: row.class || row.className,
                     department: row.department,
                     yearOfStudy: row.yearOfStudy,
+                    labName: row.lab || row.labName, // Added for LAB_INCHARGE
                     contact: {
                         email: userEmail ? userEmail.email : null,
                         mobile_number: userMobile ? userMobile.mobile_number : null
