@@ -45,16 +45,26 @@ const ODStatus = ({ user }) => {
         };
         loadRequests();
 
-        // Load Faculty Data from API
-        dataApi.getLocations().then(res => setLabInchargeList(res)); // Note: Mapping might need adjustment if getLocations only returns locations
-        // Better: Backend should have a specific faculty endpoint or reuse dataApi with different modes
-        // For now, let's keep it consistent with AdminDashboard's load
-
-        fetch('/advisors.csv') // Temporarily keeping some CSVs if API not fully ready for all faculty types
+        // Load Faculty Data from CSVs for now
+        fetch('/advisors.csv')
             .then(r => r.text())
             .then(csv => {
                 const Papa = require('papaparse');
                 Papa.parse(csv, { header: true, skipEmptyLines: true, complete: res => setAdvisorList(res.data) });
+            });
+            
+        fetch('/hod.csv')
+            .then(r => r.text())
+            .then(csv => {
+                const Papa = require('papaparse');
+                Papa.parse(csv, { header: true, skipEmptyLines: true, complete: res => setHodList(res.data) });
+            });
+            
+        fetch('/lab_incharge.csv')
+            .then(r => r.text())
+            .then(csv => {
+                const Papa = require('papaparse');
+                Papa.parse(csv, { header: true, skipEmptyLines: true, complete: res => setLabInchargeList(res.data) });
             });
 
         // Re-using dataApi where possible
