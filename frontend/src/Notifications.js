@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiBell, FiCheckCircle, FiXCircle, FiClock, FiInfo } from 'react-icons/fi';
+import { odApi, miscApi } from './api';
 
 const Notifications = ({ user }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -8,86 +9,93 @@ const Notifications = ({ user }) => {
     const dropdownRef = useRef(null);
 
     useEffect(() => {
-        const fetchNotifications = () => {
-            const allRequests = JSON.parse(localStorage.getItem('all_od_requests') || '[]');
-            let filtered = [];
+        const fetchNotifications = async () => {
+            try {
+                // Fetch from Backend instead of localStorage
+                const [allRequests, allViolations] = await Promise.all([
+                    odApi.getAllRequests(),
+                    miscApi.getViolations()
+                ]);
 
-            if (user.role === 'STUDENT') {
-                // Notifications for status change
-                filtered = allRequests
-                    .filter(r => r.studentId === user.id)
-                    .map(r => ({
-                        id: `${r.id}_${r.status}`,
-                        title: r.status === 'APPROVED' ? 'OD Approved' : r.status === 'DENIED' ? 'OD Denied' : 'OD Status Updated',
-                        message: `Your request for "${r.purpose}" is now ${r.status.replace(/_/g, ' ')}.`,
-                        status: r.status,
-                        time: r.requestedAt
-                    }));
-            } else if (user.role === 'LAB_INCHARGE') {
-                // New requests waiting for Lab Incharge
-                filtered = allRequests
-                    .filter(r => r.labName === user.labName && r.status === 'PENDING_LAB')
-                    .map(r => ({
-                        id: `${r.id}_pending_lab`,
-                        title: 'New OD Request',
-                        message: `${r.studentName} has requested access for ${r.labName}.`,
-                        status: 'PENDING',
-                        time: r.requestedAt
-                    }));
-            } else if (user.role === 'ADVISOR') {
-                // Requests forwarded to Advisor
-                filtered = allRequests
-                    .filter(r => r.className === user.className && r.status === 'PENDING_ADVISOR')
-                    .map(r => ({
-                        id: `${r.id}_pending_advisor`,
-                        title: 'OD Request Forwarded',
-                        message: `New OD request from ${r.studentName} forwarded by Lab Incharge.`,
-                        status: 'PENDING',
-                        time: r.requestedAt
-                    }));
-            } else if (user.role === 'HOD') {
-                // Requests for HOD
-                filtered = allRequests
-                    .filter(r => r.department === user.department && r.status === 'FORWARDED_TO_HOD')
-                    .map(r => {
-                        const isHighCGPA = (r.cgpa || 0) >= 8;
-                        return {
-                            id: `${r.id}_pending_hod`,
-                            title: 'OD Approval Required',
-                            message: isHighCGPA
-                                ? `${r.studentName} has got OD for ${r.labName} for ${r.purpose} which is verified by ${r.labInchargeName} and approved by ${r.advisorName}.`
-                                : `OD request by ${r.advisorName} for student ${r.studentName}.`,
+                const safeRequests = Array.isArray(allRequests) ? allRequests : [];
+                const safeViolations = Array.isArray(allViolations) ? allViolations : [];
+
+                let filtered = [];
+
+                if (user.role === 'STUDENT') {
+                    filtered = safeRequests
+                        .filter(r => r.studentId === user.id)
+                        .map(r => ({
+                            id: `${r.id}_${r.status}`,
+                            title: r.status === 'APPROVED' ? 'OD Approved' : r.status === 'DENIED' ? 'OD Denied' : 'OD Status Updated',
+                            message: `Your request for "${r.purpose}" is now ${r.status?.replace(/_/g, ' ')}.`,
+                            status: r.status,
+                            time: r.requestedAt
+                        }));
+                } else if (user.role === 'LAB_INCHARGE') {
+                    filtered = safeRequests
+                        .filter(r => r.labName === user.labName && r.status === 'PENDING_LAB')
+                        .map(r => ({
+                            id: `${r.id}_pending_lab`,
+                            title: 'New OD Request',
+                            message: `${r.studentName} has requested access for ${r.labName}.`,
                             status: 'PENDING',
                             time: r.requestedAt
-                        };
-                    });
-            }
+                        }));
+                } else if (user.role === 'ADVISOR') {
+                    filtered = safeRequests
+                        .filter(r => r.className === user.className && r.status === 'PENDING_ADVISOR')
+                        .map(r => ({
+                            id: `${r.id}_pending_advisor`,
+                            title: 'OD Request Forwarded',
+                            message: `New OD request from ${r.studentName} forwarded by Lab Incharge.`,
+                            status: 'PENDING',
+                            time: r.requestedAt
+                        }));
+                } else if (user.role === 'HOD') {
+                    // Include both pending validation AND auto-approvals for High CGPA
+                    filtered = safeRequests
+                        .filter(r => r.department === user.department && (r.status === 'FORWARDED_TO_HOD' || (r.status === 'APPROVED' && (r.cgpa || 0) >= 8)))
+                        .map(r => {
+                            const isHighCGPA = (r.cgpa || 0) >= 8;
+                            const isAutoApproved = r.status === 'APPROVED' && isHighCGPA;
+                            
+                            return {
+                                id: `${r.id}_${r.status}_hod`,
+                                title: isAutoApproved ? 'OD Auto-Approved' : 'OD Approval Required',
+                                message: isAutoApproved 
+                                    ? `Advisor ${r.advisorName} of ${r.className} approved OD for ${r.studentName} on working in ${r.labName} for ${r.purpose} from ${r.startDate} to ${r.endDate}.`
+                                    : isHighCGPA
+                                        ? `${r.studentName} has requested OD for ${r.labName} for ${r.purpose} which is verified by ${r.labInchargeName} and forwarded by ${r.advisorName}.`
+                                        : `OD request by ${r.advisorName} for student ${r.studentName}.`,
+                                status: isAutoApproved ? 'APPROVED' : 'PENDING',
+                                time: r.requestedAt
+                            };
+                        });
+                }
 
-            // Add Delayed Checkin Violations for Faculty
-            if (user.role === 'ADVISOR' || user.role === 'LAB_INCHARGE' || user.role === 'HOD') {
-                const violations = JSON.parse(localStorage.getItem('od_violations') || '[]');
-                const violationNotifs = violations.map(v => ({
-                    id: `violation_${v.id}`,
-                    title: '🚨 Check-in Violation',
-                    message: v.message,
-                    status: 'VIOLATION',
-                    time: v.time
-                }));
-                filtered = [...filtered, ...violationNotifs];
-            }
+                // Append Violations
+                if (user.role !== 'STUDENT') {
+                    const violationNotifs = safeViolations.map(v => ({
+                        id: `violation_${v.id}`,
+                        title: '🚨 Check-in Violation',
+                        message: v.message,
+                        status: 'VIOLATION',
+                        time: v.time
+                    }));
+                    filtered = [...filtered, ...violationNotifs];
+                }
 
-            // Combine and sort by time
-            setNotifications(filtered.sort((a, b) => new Date(b.time) - new Date(a.time)));
+                setNotifications(filtered.sort((a, b) => new Date(b.time) - new Date(a.time)));
+            } catch (err) {
+                console.error("Failed to fetch notifications:", err);
+            }
         };
 
         fetchNotifications();
-        const interval = setInterval(fetchNotifications, 5000); // Poll for new requests
+        const interval = setInterval(fetchNotifications, 5000); 
 
-        window.addEventListener('violations_updated', fetchNotifications);
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('violations_updated', fetchNotifications);
-        };
+        return () => clearInterval(interval);
     }, [user]);
 
     useEffect(() => {

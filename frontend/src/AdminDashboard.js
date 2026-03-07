@@ -169,34 +169,35 @@ const AdminDashboard = ({ user }) => {
         if (req.status === 'PENDING_LAB') {
             nextStatus = 'PENDING_ADVISOR';
         } else if (req.status === 'PENDING_ADVISOR') {
-            nextStatus = req.priorityScore >= 75 ? 'APPROVED' : 'FORWARDED_TO_HOD';
+            const isHighCGPA = (req.cgpa || 0) >= 8;
+            nextStatus = (isHighCGPA || req.priorityScore >= 75) ? 'APPROVED' : 'FORWARDED_TO_HOD';
         } else if (req.status === 'FORWARDED_TO_HOD') {
             nextStatus = 'APPROVED';
         }
         updateRequestStatus(req.id, req.studentId, nextStatus);
     };
 
-    const handleDeny = (req) => {
-        // Track which stage rejected the request
-        const getRejectedBy = (status) => {
-            if (status === 'PENDING_LAB') return 'LAB_INCHARGE';
-            if (status === 'PENDING_ADVISOR') return 'ADVISOR';
-            if (status === 'FORWARDED_TO_HOD') return 'HOD';
-            return 'LAB_INCHARGE';
-        };
+    const handleDeny = async (req) => {
+        try {
+            const getRejectedBy = (status) => {
+                if (status === 'PENDING_LAB') return 'LAB_INCHARGE';
+                if (status === 'PENDING_ADVISOR') return 'ADVISOR';
+                if (status === 'FORWARDED_TO_HOD') return 'HOD';
+                return 'LAB_INCHARGE';
+            };
 
-        // 1. Update Global Store with rejectedBy field
-        const allRequests = JSON.parse(localStorage.getItem('all_od_requests') || '[]');
-        const updatedGlobal = allRequests.map(r => r.id === req.id ? { ...r, status: 'DENIED', rejectedBy: getRejectedBy(req.status) } : r);
-        localStorage.setItem('all_od_requests', JSON.stringify(updatedGlobal));
+            const rejectedBy = getRejectedBy(req.status);
+            await odApi.updateStatus(req.id, { 
+                status: 'DENIED', 
+                rejectedBy: rejectedBy 
+            });
 
-        // 2. Update Student's Personal History with rejectedBy field
-        const studentHistory = JSON.parse(localStorage.getItem(`od_requests_${req.studentId}`) || '[]');
-        const updatedHistory = studentHistory.map(r => r.id === req.id ? { ...r, status: 'DENIED', rejectedBy: getRejectedBy(req.status) } : r);
-        localStorage.setItem(`od_requests_${req.studentId}`, JSON.stringify(updatedHistory));
-
-        // 3. Refresh Local View
-        setPendingRequests((pendingRequests || []).filter(r => r && r.id !== req.id));
+            // 3. Refresh Local View
+            setPendingRequests((pendingRequests || []).filter(r => r && r.id !== req.id));
+        } catch (err) {
+            console.error("Deny failed:", err);
+            setError("Failed to reject request. Please try again.");
+        }
     };
 
     const handleSaveMetadata = async () => {
