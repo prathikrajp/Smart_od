@@ -682,7 +682,7 @@ const AdminDashboard = ({ user }) => {
                                                 }`}>
                                                 {req.priorityScore >= 75 ? 'High Performer' : 'Low Performer'}
                                             </span>
-                                            <span className="text-xs font-bold text-gray-600">Request #{req.id.toString().slice(-4)}</span>
+                                            <span className="text-xs font-bold text-gray-600">Request #{(req.id?.toString() || '??').slice(-4)}</span>
                                         </div>
                                         <h4 className="text-xl font-bold text-white">{req.studentName} <span className="text-sm font-medium text-gray-500">({req.studentId})</span></h4>
                                         <div className="text-xs font-mono text-gray-400">Score: {req.priorityScore.toFixed(1)} | Dept: {req.department}</div>
@@ -714,7 +714,7 @@ const AdminDashboard = ({ user }) => {
                                             <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
                                                 Awaiting Manual Start
                                             </span>
-                                            <span className="text-xs font-bold text-gray-600">Request #{req.id.toString().slice(-4)}</span>
+                                            <span className="text-xs font-bold text-gray-600">Request #{(req.id?.toString() || '??').slice(-4)}</span>
                                         </div>
                                         <h4 className="text-xl font-bold text-white">{req.studentName} <span className="text-sm font-medium text-gray-500">({req.studentId})</span></h4>
                                         <div className="flex flex-wrap gap-4 text-xs font-mono text-gray-400">
