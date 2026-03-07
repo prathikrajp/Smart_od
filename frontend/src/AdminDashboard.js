@@ -28,30 +28,35 @@ const AdminDashboard = ({ user }) => {
     useEffect(() => {
         // 0. Load Location Data from API
         dataApi.getLocations().then(parsed => {
+            if (!Array.isArray(parsed)) return;
             const mapping = {};
             parsed.forEach(row => {
-                mapping[row.className] = {
-                    floor: row.floor,
-                    bssid: row.bssid
-                };
+                if (row && row.className) {
+                    mapping[row.className] = {
+                        floor: row.floor,
+                        bssid: row.bssid
+                    };
+                }
             });
             setLocationMap(mapping);
-        });
+        }).catch(err => console.error("Location load failed:", err));
 
         // 1 & 2. Load Requests & Student Data
         const loadInitialData = async () => {
             try {
                 // Fetch All Requests
                 const reqs = await odApi.getAllRequests();
-                setGlobalRequests(reqs);
+                const safeReqs = Array.isArray(reqs) ? reqs : [];
+                setGlobalRequests(safeReqs);
 
                 let filteredReqs = [];
-                if (user.role === 'LAB_INCHARGE') {
-                    filteredReqs = reqs.filter(r => r.labName === user.labName && r.status === 'PENDING_LAB');
-                } else if (user.role === 'ADVISOR') {
-                    filteredReqs = reqs.filter(r => r.className === user.className && r.status === 'PENDING_ADVISOR');
-                } else if (user.role === 'HOD') {
-                    filteredReqs = reqs.filter(r => r.department === user.department && r.status === 'FORWARDED_TO_HOD');
+                const role = user?.role;
+                if (role === 'LAB_INCHARGE') {
+                    filteredReqs = safeReqs.filter(r => r.labName === user?.labName && r.status === 'PENDING_LAB');
+                } else if (role === 'ADVISOR') {
+                    filteredReqs = safeReqs.filter(r => r.className === user?.className && r.status === 'PENDING_ADVISOR');
+                } else if (role === 'HOD') {
+                    filteredReqs = safeReqs.filter(r => r.department === user?.department && r.status === 'FORWARDED_TO_HOD');
                 }
                 setPendingRequests(filteredReqs);
 
@@ -61,9 +66,10 @@ const AdminDashboard = ({ user }) => {
                     miscApi.getMetadata()
                 ]);
 
-                setStudentMetadata(savedMetadata);
+                setStudentMetadata(savedMetadata || {});
 
-                const parsed = students.map(s => ({
+                const safeStudents = Array.isArray(students) ? students : [];
+                const parsed = safeStudents.map(s => ({
                     ...s,
                     cgpa: parseFloat(s.cgpa) || 0,
                     marks: parseFloat(s.marks) || 0,
@@ -72,21 +78,25 @@ const AdminDashboard = ({ user }) => {
                 }));
 
                 let filteredStudents = [];
-                if (user.role === 'ADVISOR') {
-                    filteredStudents = parsed.filter(s => s.className === user.className);
-                } else if (user.role === 'HOD') {
-                    filteredStudents = parsed.filter(s => s.department === user.department);
-                } else if (user.role === 'LAB_INCHARGE') {
+                const role2 = user?.role;
+                if (role2 === 'ADVISOR') {
+                    filteredStudents = parsed.filter(s => s.className === user?.className);
+                } else if (role2 === 'HOD') {
+                    filteredStudents = parsed.filter(s => s.department === user?.department);
+                } else if (role2 === 'LAB_INCHARGE') {
                     filteredStudents = parsed;
                 }
 
                 filteredStudents.sort((a, b) => b.cgpa - a.cgpa);
 
-                const mergedWithMetadata = filteredStudents.map(s => ({
-                    ...s,
-                    achievements: savedMetadata[s.id]?.achievements || s.achievements || 'N/A',
-                    remarks: savedMetadata[s.id]?.remarks || s.remarks || 'N/A'
-                }));
+                const mergedWithMetadata = filteredStudents.map(s => {
+                    const meta = (savedMetadata || {})[s.id] || {};
+                    return {
+                        ...s,
+                        achievements: meta.achievements || s.achievements || 'N/A',
+                        remarks: meta.remarks || s.remarks || 'N/A'
+                    };
+                });
 
                 setData(mergedWithMetadata);
             } catch (err) {
@@ -103,9 +113,10 @@ const AdminDashboard = ({ user }) => {
                 setLivePresence(presence);
 
                 const allRequests = await odApi.getAllRequests();
+                const safeAllReqs = Array.isArray(allRequests) ? allRequests : [];
                 const approvedMap = {};
-                allRequests.forEach(r => {
-                    if (r.status === 'APPROVED') {
+                safeAllReqs.forEach(r => {
+                    if (r && r.status === 'APPROVED') {
                         approvedMap[r.studentId] = r.labName;
                     }
                 });
@@ -146,7 +157,7 @@ const AdminDashboard = ({ user }) => {
             await odApi.updateStatus(requestId, updates);
 
             // 3. Refresh Local View
-            setPendingRequests(pendingRequests.filter(r => r.id !== requestId));
+            setPendingRequests((pendingRequests || []).filter(r => r && r.id !== requestId));
         } catch (err) {
             console.error("Update failed:", err);
             setError("Failed to update status. Please try again.");
@@ -185,7 +196,7 @@ const AdminDashboard = ({ user }) => {
         localStorage.setItem(`od_requests_${req.studentId}`, JSON.stringify(updatedHistory));
 
         // 3. Refresh Local View
-        setPendingRequests(pendingRequests.filter(r => r.id !== req.id));
+        setPendingRequests((pendingRequests || []).filter(r => r && r.id !== req.id));
     };
 
     const handleSaveMetadata = async () => {

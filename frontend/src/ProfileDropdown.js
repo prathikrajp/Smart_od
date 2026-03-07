@@ -94,12 +94,12 @@ const ProfileDropdown = ({ user }) => {
                     {profilePic ? (
                         <img src={profilePic} alt="Profile" className="w-full h-full object-cover" />
                     ) : (
-                        user.name.charAt(0).toUpperCase()
+                        user?.name ? user.name.charAt(0).toUpperCase() : '?'
                     )}
                 </div>
                 <div className="hidden md:flex flex-col items-start mr-2">
-                    <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">{user.role}</span>
-                    <span className="text-xs font-bold text-white leading-none tracking-tight">{user.name}</span>
+                    <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest leading-none mb-1">{user?.role || 'User'}</span>
+                    <span className="text-xs font-bold text-white leading-none tracking-tight">{user?.name || 'Anonymous'}</span>
                 </div>
             </button>
 
@@ -114,7 +114,7 @@ const ProfileDropdown = ({ user }) => {
                                 {profilePic ? (
                                     <img src={profilePic} alt="Profile Large" className="w-full h-full object-cover" />
                                 ) : (
-                                    user.name.charAt(0).toUpperCase()
+                                    user?.name ? user.name.charAt(0).toUpperCase() : '?'
                                 )}
                             </div>
                             <button
@@ -154,9 +154,9 @@ const ProfileDropdown = ({ user }) => {
                                 accept="image/*"
                             />
                         </div>
-                        <h3 className="text-xl font-black text-white leading-tight tracking-tight">{user.name}</h3>
+                        <h3 className="text-xl font-black text-white leading-tight tracking-tight">{user?.name || 'Anonymous'}</h3>
                         <p className="text-[10px] font-black text-blue-500 uppercase tracking-[0.2em] mt-2 bg-blue-500/10 px-4 py-1 rounded-full border border-blue-500/20">
-                            {user.role.replace('_', ' ')}
+                            {(user?.role || '').replace('_', ' ')}
                         </p>
                     </div>
 
