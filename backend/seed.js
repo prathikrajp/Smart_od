@@ -64,6 +64,8 @@ const seedDB = async () => {
                     cgpa: row.cgpa ? parseFloat(row.cgpa) : undefined,
                     marks: row.marks ? parseFloat(row.marks) : undefined,
                     className: row.class || row.className,
+                    department: row.department,
+                    yearOfStudy: row.yearOfStudy,
                     contact: {
                         email: userEmail ? userEmail.email : null,
                         mobile_number: userMobile ? userMobile.mobile_number : null
