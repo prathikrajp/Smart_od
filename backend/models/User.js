@@ -20,6 +20,7 @@ const userSchema = new mongoose.Schema({
     yearOfStudy: String,
     achievements: { type: String, default: 'N/A' },
     remarks: { type: String, default: 'N/A' },
+    labName: String,
     totalWorkingMs: { type: Number, default: 0 },
     password: { type: String, default: 'password' }, // Simple default
     createdAt: { type: Date, default: Date.now }
