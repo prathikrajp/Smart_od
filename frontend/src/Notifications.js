@@ -12,13 +12,15 @@ const Notifications = ({ user }) => {
         const fetchNotifications = async () => {
             try {
                 // Fetch from Backend instead of localStorage
-                const [allRequests, allViolations] = await Promise.all([
+                const [allRequests, allViolations, allPresence] = await Promise.all([
                     odApi.getAllRequests(),
-                    miscApi.getViolations()
+                    miscApi.getViolations(),
+                    presenceApi.getPresenceLogs ? presenceApi.getPresenceLogs() : Promise.resolve([])
                 ]);
 
                 const safeRequests = Array.isArray(allRequests) ? allRequests : [];
                 const safeViolations = Array.isArray(allViolations) ? allViolations : [];
+                const safePresence = Array.isArray(allPresence) ? allPresence : [];
 
                 let filtered = [];
 
@@ -33,7 +35,8 @@ const Notifications = ({ user }) => {
                             time: r.requestedAt
                         }));
                 } else if (user.role === 'LAB_INCHARGE') {
-                    filtered = safeRequests
+                    // 1. Pending OD Requests
+                    const odNotifs = safeRequests
                         .filter(r => r.labName === user.labName && r.status === 'PENDING_LAB')
                         .map(r => ({
                             id: `${r.id}_pending_lab`,
@@ -42,6 +45,19 @@ const Notifications = ({ user }) => {
                             status: 'PENDING',
                             time: r.requestedAt
                         }));
+
+                    // 2. Digital Sign-ins (from Presence logs)
+                    const signInNotifs = safePresence
+                        .filter(p => p.name === user.labName && p.type === 'LAB')
+                        .map(p => ({
+                            id: `signin_${p.studentId}_${p.timestamp}`,
+                            title: 'Digital Sign-in',
+                            message: `${p.studentName || p.studentId} digitally signed in into ${p.name} at ${new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.`,
+                            status: 'APPROVED',
+                            time: p.timestamp
+                        }));
+                    
+                    filtered = [...odNotifs, ...signInNotifs];
                 } else if (user.role === 'ADVISOR') {
                     filtered = safeRequests
                         .filter(r => r.className === user.className && r.status === 'PENDING_ADVISOR')

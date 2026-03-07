@@ -20,7 +20,10 @@ const QRCodePortal = ({ user }) => {
     }, []);
 
     const locationName = user.role === 'LAB_INCHARGE' ? user.labName : user.className;
-    const locData = locationMap[locationName] || { floor: 'Verifying Floor...', bssid: 'N/A' };
+    
+    // Normalize: "AI LAB" -> "AI" to match MAC_address.csv
+    const normalizedName = locationName ? locationName.replace(/\s+LAB$/, '').trim() : '';
+    const locData = locationMap[normalizedName] || locationMap[locationName] || { floor: 'Ground Floor', bssid: 'N/A' };
 
     // Generate QR value based on role and location data
     const qrValue = JSON.stringify({

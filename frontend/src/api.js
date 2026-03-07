@@ -58,6 +58,7 @@ export const sessionApi = {
 
 export const presenceApi = {
     getPresence: () => apiRequest('/presence'),
+    getPresenceLogs: () => apiRequest('/presence/logs'), // For digital sign-in notifications
     reportPresence: (data) => apiRequest('/presence', {
         method: 'POST',
         body: JSON.stringify(data)

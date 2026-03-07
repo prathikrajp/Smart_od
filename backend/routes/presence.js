@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const Presence = require('../models/Presence');
 
+// Get all presence logs (for notifications)
+router.get('/logs', async (req, res) => {
+    try {
+        const logs = await Presence.find().sort({ timestamp: -1 }).limit(50);
+        res.json(logs);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch presence logs' });
+    }
+});
+
 // Get real-time presence map
 router.get('/', async (req, res) => {
     try {

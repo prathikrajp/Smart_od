@@ -370,9 +370,9 @@ id,name,cgpa,marks,department,yearOfStudy,className,classAdvisorName
 25EC009,Jane Martinez,7.43,64.0,ECE,1st,ECE-3,Prof. Shobica
 25EC010,Bella Martin,6.77,67.3,ECE,1st,ECE-3,Prof. Shobica
 24EC011,Yara Hernandez,7.61,61.4,ECE,1st,ECE-3,Prof. Shobica
-24EC012,Henry Jo    nes,8.91,75.3,ECE,1st,ECE-3,Prof. Shobica
+24EC012,Henry Jones,8.91,75.3,ECE,1st,ECE-3,Prof. Shobica
 24EC013,Yara Miller,6.85,52.5,ECE,1st,ECE-3,Prof. Shobica
-24EC014,Xavier Smith,8.14,71.5,ECE,1st,ECE-3,Prof. Shobica
+24EC014,Xavier Smith, 8.14,71.5,ECE,1st,ECE-3,Prof. Shobica
 24EC015,Caleb Miller,8.11,89.8,ECE,1st,ECE-3,Prof. Shobica
 24EC016,Daniel Wilson,7.39,65.3,ECE,1st,ECE-3,Prof. Shobica
 24EC017,Tina Young,6.85,64.4,ECE,1st,ECE-3,Prof. Shobica
@@ -388,7 +388,7 @@ id,name,cgpa,marks,department,yearOfStudy,className,classAdvisorName
 24EC027,Jane Robinson,7.69,67.6,ECE,1st,ECE-3,Prof. Shobica
 24EC028,Laura Lee,9.29,81.3,ECE,1st,ECE-3,Prof. Shobica
 24EC029,Victor Thomas,6.98,68.9,ECE,1st,ECE-3,Prof. Shobica
-24EC030,Isabella Wilson,7.44,61.1,ECE,1st,ECE-3,Prof. Shobica
+24EC030,Isabella Wi,lson,7.44,61.1,ECE,1st,ECE-3,Prof. Shobica
 24EC001,Henry Thompson,8.75,79.3,ECE,1st,ECE-4,Dr. Uma Nathan
 24EC002,Caleb Smith,5.62,61.3,ECE,1st,ECE-4,Dr. Uma Nathan
 24EC003,Rachel Harris,9.09,80.0,ECE,1st,ECE-4,Dr. Uma Nathan
