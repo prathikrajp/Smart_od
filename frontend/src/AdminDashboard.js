@@ -128,6 +128,7 @@ const AdminDashboard = ({ user }) => {
                 setLivePresence(presence);
 
                 const allRequests = await odApi.getAllRequests();
+                const safeAllReqs = Array.isArray(allRequests) ? allRequests : [];
                 const approvedMap = {};
                 let filteredReqs = [];
                 const role = user?.role;
@@ -141,7 +142,7 @@ const AdminDashboard = ({ user }) => {
                         filteredReqs.push(r);
                     } else if (role === 'ADVISOR' && r.className === user?.className && r.status === 'PENDING_ADVISOR') {
                         filteredReqs.push(r);
-                    } else if (role === 'HOD' && r.department === user?.department && r.status === 'FORWARDED_TO_HOD') {
+                    } else if (role === 'HOD' && user?.department && r.department === user.department && r.status === 'FORWARDED_TO_HOD') {
                         filteredReqs.push(r);
                     }
                 });

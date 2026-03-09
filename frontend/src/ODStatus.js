@@ -468,21 +468,28 @@ const ODStatus = ({ user }) => {
                                     </div>
                                 </div>
 
-                                <div className="pt-6">
-                                    <button
-                                        disabled={loading || !formData.advisorName || credentialMismatch}
-                                        type="submit"
-                                        className="w-full py-6 bg-white text-black font-black rounded-[1.5rem] shadow-[0_10px_40px_rgba(255,255,255,0.1)] hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center transform active:scale-95 disabled:opacity-20 disabled:cursor-not-allowed uppercase tracking-[0.2em] text-xs"
-                                    >
-                                        {loading ? <div className="w-6 h-6 border-4 border-black/10 border-t-black rounded-full animate-spin"></div> : 'Commit Deployment Request'}
-                                    </button>
-                                </div>
                                 {credentialMismatch && (
-                                    <div className="mt-6 flex items-center justify-center gap-4 p-5 bg-red-500/10 border border-red-500/20 rounded-2xl">
-                                        <span className="text-red-500 text-xl font-bold">!</span>
-                                        <p className="text-xs font-black text-red-500 uppercase tracking-wider">Credential Mismatch: Origin parameters do not align with identity profile.</p>
+                                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-start space-x-3 animate-bounce">
+                                        <FiAlertCircle className="text-red-500 mt-0.5" size={18} />
+                                        <div>
+                                            <p className="text-red-500 text-xs font-black uppercase tracking-widest">Profiling Conflict Detected</p>
+                                            <p className="text-red-400/80 text-[11px] font-medium leading-relaxed mt-1">
+                                                The selected {formData.department !== user.department ? 'Department' : 'Year of Study'} does not match your official terminal encryption. Please verify your academic grid coordinates.
+                                            </p>
+                                        </div>
                                     </div>
                                 )}
+
+                                <button
+                                    type="submit"
+                                    disabled={loading || !formData.advisorName || credentialMismatch}
+                                    className={`w-full py-5 rounded-2xl text-xs font-black uppercase tracking-[0.3em] transition-all shadow-2xl active:scale-95 flex items-center justify-center ${loading || !formData.advisorName || credentialMismatch
+                                        ? 'bg-white/5 text-gray-600 cursor-not-allowed border border-white/5'
+                                        : 'bg-white text-black hover:bg-gray-200 shadow-white/10'
+                                        }`}
+                                >
+                                    {loading ? 'Processing Request...' : 'Initialize On-Duty Sequence'}
+                                </button>
                             </form>
                         </div>
                     </div>
