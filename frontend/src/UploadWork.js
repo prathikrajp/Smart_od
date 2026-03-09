@@ -231,7 +231,7 @@ const UploadWork = ({ user }) => {
                             <h3 className="text-xl md:text-2xl font-black text-white tracking-tight">Upload Portfolio</h3>
                             <p className="text-[10px] md:text-xs text-gray-500 font-black uppercase tracking-widest mt-1">Showcase your academic & creative work</p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3">
+                        <div id="mobile-action-bar" className="flex flex-col sm:flex-row gap-3">
                             <button
                                 onClick={() => setShowComposeModal(true)}
                                 className="w-full sm:w-auto bg-white/5 hover:bg-white/10 text-white px-6 py-4 rounded-xl md:rounded-2xl font-black text-xs uppercase tracking-widest transition-all border border-white/10 flex items-center justify-center active:scale-95"
@@ -301,36 +301,37 @@ const UploadWork = ({ user }) => {
 
                     <div className="space-y-6 relative z-10">
                         <div>
-                            <span className="text-[10px] font-black text-blue-400 uppercase tracking-widest block mb-2">
+                            <span className="text-[10px] md:text-xs font-black text-blue-400 uppercase tracking-widest block mb-1 md:mb-2">
                                 {selectedDate ? `Work on ${selectedDate}` : 'This Week\'s Progress'}
                             </span>
-                            <div className="text-3xl md:text-4xl font-black text-white tracking-tight">
+                            <div className="text-2xl md:text-3xl lg:text-4xl font-black text-white tracking-tight">
                                 {formatTime(selectedDate ? selectedHours : weeklyHours)}
                             </div>
                         </div>
 
                         {labSession && (
-                            <div className="bg-white/10 rounded-2xl p-5 border border-white/10 animate-pulse">
-                                <div className="flex items-center justify-between mb-3">
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">Live Session</span>
+                            <div className="bg-white/10 rounded-2xl p-4 md:p-5 border border-white/10 animate-pulse">
+                                <div className="flex items-center justify-between mb-2 md:mb-3">
+                                    <span className="text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-widest">Live Session</span>
                                     <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
                                 </div>
-                                <div className="text-xl md:text-2xl font-black text-white tabular-nums mb-1">{liveSessionTime}</div>
-                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Venue: {labSession.labName}</div>
+                                <div className="text-lg md:text-xl lg:text-2xl font-black text-white tabular-nums mb-1">{liveSessionTime}</div>
+                                <div className="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-tight">Venue: {labSession.labName}</div>
                             </div>
                         )}
 
                         {!labSession && !selectedDate && (
-                            <div className="flex items-center space-x-3 text-xs font-medium text-gray-500 bg-white/5 p-3 rounded-xl border border-white/5">
-                                <FiActivity className="text-blue-500" />
-                                <span>{weeklyUploadsCount} Portfolio Uploads this week</span>
+                            <div className="flex items-center space-x-3 text-[10px] md:text-xs font-medium text-gray-500 bg-white/5 p-3 md:p-4 rounded-xl border border-white/5">
+                                <FiActivity className="text-blue-500 shrink-0" size={16} />
+                                <span>{weeklyHours > 0 ? `${(weeklyHours / 3600000).toFixed(1)}h logged` : '0h logged'} & {weeklyUploadsCount} Uploads this week</span>
                             </div>
                         )}
                         
                         {!labSession && selectedDate && (
-                            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                                Daily breakdown for selected date
-                            </p>
+                            <div className="flex items-center space-x-3 text-[10px] md:text-xs font-medium text-amber-500/80 bg-white/5 p-3 md:p-4 rounded-xl border border-white/5">
+                                <FiCalendar className="shrink-0" size={16} />
+                                <span>Showing activity for {selectedDate}</span>
+                            </div>
                         )}
                     </div>
                 </div>
@@ -498,6 +499,36 @@ const UploadWork = ({ user }) => {
                 }
                 .animate-bounce-subtle {
                     animation: bounce-subtle 2s infinite ease-in-out;
+                }
+
+                /* Mobile Specific Alignment & Neatness */
+                @media (max-width: 640px) {
+                    .grid-cols-7 {
+                        gap: 1.5px !important;
+                    }
+                    .aspect-square {
+                        border-radius: 12px !important;
+                        font-size: 10px !important;
+                    }
+                    h3 {
+                        font-size: 1.1rem !important;
+                    }
+                    .p-6, .p-8 {
+                        padding: 1.25rem !important;
+                    }
+                    .rounded-[2rem], .rounded-[2.5rem] {
+                        border-radius: 1.5rem !important;
+                    }
+                    .text-3xl {
+                        font-size: 1.5rem !important;
+                    }
+                    #mobile-action-bar {
+                        flex-direction: column !important;
+                        gap: 12px !important;
+                    }
+                    .md\\:rounded-2xl {
+                        border-radius: 1rem !important;
+                    }
                 }
             `}} />
         </div>
