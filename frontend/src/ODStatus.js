@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { FiFileText, FiCheckCircle, FiXCircle, FiTrendingUp, FiBarChart2, FiSend, FiClock, FiCalendar, FiMapPin, FiUser, FiArrowRight, FiDownload, FiInfo, FiX } from 'react-icons/fi';
 import ODLetter from './ODLetter';
 import UploadWork from './UploadWork';
+import Papa from 'papaparse';
 import { odApi, dataApi, miscApi } from './api';
 
 const ODStatus = ({ user }) => {
     const [showForm, setShowForm] = useState(false);
     const [showLetter, setShowLetter] = useState(false);
+    const [selectedRequest, setSelectedRequest] = useState(null); // To replace undefined currentRequest
     const [loading, setLoading] = useState(false);
     const [requestHistory, setRequestHistory] = useState([]);
     const [studentMetadata, setStudentMetadata] = useState({ achievements: 'N/A', remarks: 'N/A' });
@@ -49,21 +51,18 @@ const ODStatus = ({ user }) => {
         fetch('/advisors.csv')
             .then(r => r.text())
             .then(csv => {
-                const Papa = require('papaparse');
                 Papa.parse(csv, { header: true, skipEmptyLines: true, complete: res => setAdvisorList(res.data) });
             });
             
         fetch('/hod.csv')
             .then(r => r.text())
             .then(csv => {
-                const Papa = require('papaparse');
                 Papa.parse(csv, { header: true, skipEmptyLines: true, complete: res => setHodList(res.data) });
             });
             
         fetch('/lab_incharge.csv')
             .then(r => r.text())
             .then(csv => {
-                const Papa = require('papaparse');
                 Papa.parse(csv, { header: true, skipEmptyLines: true, complete: res => setLabInchargeList(res.data) });
             });
 
@@ -96,6 +95,8 @@ const ODStatus = ({ user }) => {
     const isApprovedInitial = priorityScore > 60;
 
     // Credential validation: check if what the student selected matches their actual profile
+    const credentialMismatch = (formData.department && formData.department !== user.department) || 
+                             (formData.yearOfStudy && formData.yearOfStudy !== user.yearOfStudy);
 
     // Derive HOD and Class list when Dept or Year changes
     const departments = [...new Set(hodList.map(h => h.department))].sort();
@@ -191,8 +192,8 @@ const ODStatus = ({ user }) => {
         localStorage.setItem(`od_requests_${user.id}`, JSON.stringify(updated));
     };
 
-    if (showLetter) {
-        return <ODLetter student={user} request={currentRequest} onBack={() => setShowLetter(false)} />;
+    if (showLetter && selectedRequest) {
+        return <ODLetter student={user} request={selectedRequest} onBack={() => { setShowLetter(false); setSelectedRequest(null); }} />;
     }
 
     return (
@@ -341,7 +342,13 @@ const ODStatus = ({ user }) => {
                                                     </div>
                                                     <div className="flex flex-col md:items-end gap-3 w-full md:w-auto">
                                                         {isLetterValid(req) && (
-                                                            <button onClick={() => { /* View specific letter */ }} className="flex items-center px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-2xl shadow-black/40 w-full md:w-auto">
+                                                            <button 
+                                                                onClick={() => { 
+                                                                    setSelectedRequest(req);
+                                                                    setShowLetter(true);
+                                                                }} 
+                                                                className="flex items-center px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-2xl shadow-black/40 w-full md:w-auto"
+                                                            >
                                                                 <FiDownload className="mr-3" size={18} /> Credentials
                                                             </button>
                                                         )}
