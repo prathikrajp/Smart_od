@@ -434,23 +434,24 @@ const AdminDashboard = ({ user }) => {
                     </div>
                 </div>
 
-                {user.role === 'HOD' && notifications.filter(n => !n.readBy?.includes(user.id)).length > 0 && (
+                {user?.role === 'HOD' && Array.isArray(notifications) && notifications.filter(n => n && !n.readBy?.includes(user.id)).length > 0 && (
                     <div className="w-full mt-8 animate-fade-in px-4">
                         <div className="flex items-center space-x-3 mb-4">
                             <FiAlertCircle className="text-amber-500" />
                             <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Priority Approval Stream</h3>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {notifications.filter(n => !n.readBy?.includes(user.id)).map(n => (
+                            {notifications.filter(n => n && !n.readBy?.includes(user.id)).map(n => (
                                 <div key={n.id} className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-5 flex items-start justify-between group transition-all hover:bg-amber-500/10 active:scale-[0.98]">
                                     <div className="space-y-1 pr-4">
                                         <p className="text-xs font-bold text-gray-300 leading-relaxed italic">"{n.message}"</p>
-                                        <span className="text-[8px] font-black text-amber-500/60 uppercase tracking-widest block">{new Date(n.createdAt).toLocaleTimeString()}</span>
+                                        <span className="text-[8px] font-black text-amber-500/60 uppercase tracking-widest block">{n.createdAt ? new Date(n.createdAt).toLocaleTimeString() : 'Recent'}</span>
                                     </div>
                                     <button 
                                         onClick={async () => {
+                                            if (!n.id || !user.id) return;
                                             await notificationApi.markRead(n.id, user.id);
-                                            setNotifications(prev => prev.map(nt => nt.id === n.id ? { ...nt, readBy: [...(nt.readBy || []), user.id] } : nt));
+                                            setNotifications(prev => Array.isArray(prev) ? prev.map(nt => nt.id === n.id ? { ...nt, readBy: [...(nt.readBy || []), user.id] } : nt) : []);
                                         }}
                                         className="text-gray-600 hover:text-white p-1 transition-colors"
                                     >
@@ -761,20 +762,20 @@ const AdminDashboard = ({ user }) => {
                     </h3>
                     <div className="grid grid-cols-1 gap-4">
                         {pendingRequests.map(req => (
-                            <div key={req.id} className={`p-6 rounded-3xl border shadow-2xl transition-all bg-[#141417] ${req.priorityScore >= 75 ? 'border-blue-500/20' : 'border-red-500/20'
+                            <div key={req.id} className={`p-6 rounded-3xl border shadow-2xl transition-all bg-[#141417] ${(req.priorityScore || 0) >= 75 ? 'border-blue-500/20' : 'border-red-500/20'
                                 }`}>
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                                     <div className="space-y-2">
                                         <div className="flex items-center space-x-3">
-                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${req.priorityScore >= 75 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                                            <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest ${(req.priorityScore || 0) >= 75 ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'
                                                 }`}>
-                                                {req.priorityScore >= 75 ? 'High Performer' : 'Low Performer'}
+                                                {(req.priorityScore || 0) >= 75 ? 'High Performer' : 'Low Performer'}
                                             </span>
                                             <span className="text-xs font-bold text-gray-600">Request #{(req.id?.toString() || '??').slice(-4)}</span>
                                         </div>
                                         <h4 className="text-xl font-bold text-white">{req.studentName} <span className="text-sm font-medium text-gray-500">({req.studentId})</span></h4>
-                                        <div className="text-xs font-mono text-gray-400">Score: {req.priorityScore.toFixed(1)} | Dept: {req.department}</div>
-                                        <div className="text-base text-gray-300 font-medium italic">"{req.purpose}"</div>
+                                        <div className="text-xs font-mono text-gray-400">Score: {typeof req.priorityScore === 'number' ? req.priorityScore.toFixed(1) : 'N/A'} | Dept: {req.department || 'Unknown'}</div>
+                                        <div className="text-base text-gray-300 font-medium italic">"{req.purpose || 'No purpose provided'}"</div>
                                     </div>
                                     <div className="flex items-center space-x-4">
                                         <button onClick={() => handleDeny(req)} className="px-6 py-3 text-sm font-bold text-red-500 bg-red-500/5 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-colors">REJECT</button>
@@ -787,14 +788,14 @@ const AdminDashboard = ({ user }) => {
                 </div>
             )}
 
-            {user.role === 'ADVISOR' && globalRequests.filter(r => r.className === user.className && r.status === 'APPROVED' && !r.timerStartedAt).length > 0 && (
+            {user?.role === 'ADVISOR' && Array.isArray(globalRequests) && globalRequests.filter(r => r && r.className === user.className && r.status === 'APPROVED' && !r.timerStartedAt).length > 0 && (
                 <div className="mb-12 animate-fade-in">
                     <h3 className="text-xl font-bold text-amber-500 mb-6 flex items-center">
                         <Clock className="text-amber-500 mr-2" />
                         Approved ODs (Awaiting Timer Start)
                     </h3>
                     <div className="grid grid-cols-1 gap-4">
-                        {globalRequests.filter(r => r.className === user.className && r.status === 'APPROVED' && !r.timerStartedAt).map(req => (
+                        {globalRequests.filter(r => r && r.className === user.className && r.status === 'APPROVED' && !r.timerStartedAt).map(req => (
                             <div key={`timer_${req.id}`} className="p-6 rounded-3xl border border-amber-500/20 shadow-2xl transition-all bg-[#141417]">
                                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                                     <div className="space-y-2">
