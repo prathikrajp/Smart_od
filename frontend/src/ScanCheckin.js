@@ -326,6 +326,8 @@ const ScanCheckin = ({ user }) => {
                         if (stream) stream.getTracks().forEach(track => track.stop());
                         setFaceVerified(true);
                         setIsFaceScanning(false);
+                        // Automatically trigger QR scanner for a seamless flow
+                        startQrScanner();
                     }, 1500);
                 } else {
                     const newAttempts = faceAttempts + 1;
