@@ -96,13 +96,6 @@ const ODStatus = ({ user }) => {
     const isApprovedInitial = priorityScore > 60;
 
     // Credential validation: check if what the student selected matches their actual profile
-    const credentialMismatch = (
-        (formData.department && formData.department !== user.department) ||
-        (formData.yearOfStudy && formData.yearOfStudy !== user.yearOfStudy) ||
-        (formData.className && formData.className !== user.className)
-    );
-
-    const currentRequest = requestHistory[0];
 
     // Derive HOD and Class list when Dept or Year changes
     const departments = [...new Set(hodList.map(h => h.department))].sort();
@@ -183,11 +176,11 @@ const ODStatus = ({ user }) => {
         }
     };
 
-    const isLetterValid = () => {
-        if (!currentRequest) return false;
+    const isLetterValid = (req) => {
+        if (!req) return false;
         // The letter is valid as soon as it's approved or forwarded to HOD (after Advisor approval)
         const allowedStatuses = ['APPROVED', 'FORWARDED_TO_HOD', 'HOD_APPROVED'];
-        return allowedStatuses.includes(currentRequest.status);
+        return allowedStatuses.includes(req.status);
     };
 
     const simulateHODApproval = () => {
@@ -312,57 +305,56 @@ const ODStatus = ({ user }) => {
                                 </div>
                             </div>
 
-                            {currentRequest && (
+                            {requestHistory.length > 0 && (
                                 <div className="mt-12 border-t border-white/5 pt-12">
                                     <h3 className="text-xl font-black text-white mb-8 flex items-center tracking-tight">
                                         <div className="w-8 h-8 bg-blue-500/10 text-blue-500 rounded-lg flex items-center justify-center mr-4 border border-blue-500/20">
                                             <FiClock size={16} />
                                         </div>
-                                        Deployment Logs
+                                        Active & Recent Requests
                                     </h3>
-                                    <div className="bg-white/5 rounded-[2.5rem] p-10 border border-white/5">
-                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
-                                            <div className="space-y-5 flex-1">
-                                                <div className="flex items-center space-x-3">
-                                                    <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${currentRequest.status.includes('APPROVED') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                        (currentRequest.status.includes('PENDING') || currentRequest.status === 'FORWARDED_TO_HOD') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                            currentRequest.status === 'DENIED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                                'bg-gray-500/10 text-gray-500 border-white/10'
-                                                        }`}>
-                                                        {currentRequest.status === 'PENDING_LAB' ? 'Waiting for Lab Incharge Approval' :
-                                                            currentRequest.status === 'PENDING_ADVISOR' ? 'Waiting for Class Advisor Approval' :
-                                                                currentRequest.status === 'FORWARDED_TO_HOD' ? 'Waiting for HOD Approval' :
-                                                                    currentRequest.status.replace(/_/g, ' ')}
-                                                    </span>
-                                                    {currentRequest.status === 'PENDING_LAB' && (
-                                                        <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest animate-pulse">L-1 Lab Verification</span>
-                                                    )}
-                                                </div>
-                                                <h4 className="text-3xl font-black text-white leading-tight tracking-tight">{currentRequest.purpose}</h4>
-                                                <div className="flex flex-wrap gap-6 text-[11px] font-black text-gray-500 uppercase tracking-widest">
-                                                    <div className="flex items-center"><FiMapPin className="mr-2 text-blue-500" /> {currentRequest.labName}</div>
-                                                    <div className="flex items-center"><FiCalendar className="mr-2 text-blue-500" /> {currentRequest.startDate} - {currentRequest.endDate}</div>
+                                    <div className="space-y-6">
+                                        {requestHistory.map((req, idx) => (
+                                            <div key={req.id || idx} className="bg-white/5 rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 border border-white/5 animate-in slide-in-from-bottom-4 duration-500" style={{ animationDelay: `${idx * 100}ms` }}>
+                                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10">
+                                                    <div className="space-y-5 flex-1">
+                                                        <div className="flex items-center space-x-3">
+                                                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase border ${req.status.includes('APPROVED') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                                (req.status.includes('PENDING') || req.status === 'FORWARDED_TO_HOD') ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                                    req.status === 'DENIED' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                                        'bg-gray-500/10 text-gray-500 border-white/10'
+                                                                }`}>
+                                                                {req.status === 'PENDING_LAB' ? 'Waiting for Lab Incharge Approval' :
+                                                                    req.status === 'PENDING_ADVISOR' ? 'Waiting for Class Advisor Approval' :
+                                                                        req.status === 'FORWARDED_TO_HOD' ? 'Waiting for HOD Approval' :
+                                                                            req.status.replace(/_/g, ' ')}
+                                                            </span>
+                                                            {req.status === 'PENDING_LAB' && (
+                                                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest animate-pulse">L-1 Lab Verification</span>
+                                                            )}
+                                                        </div>
+                                                        <h4 className="text-2xl md:text-3xl font-black text-white leading-tight tracking-tight uppercase">{req.purpose}</h4>
+                                                        <div className="flex flex-wrap gap-4 md:gap-6 text-[11px] font-black text-gray-500 uppercase tracking-widest">
+                                                            <div className="flex items-center"><FiMapPin className="mr-2 text-blue-500" /> {req.labName}</div>
+                                                            <div className="flex items-center"><FiCalendar className="mr-2 text-blue-500" /> {req.startDate} - {req.endDate}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex flex-col md:items-end gap-3 w-full md:w-auto">
+                                                        {isLetterValid(req) && (
+                                                            <button onClick={() => { /* View specific letter */ }} className="flex items-center px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-2xl shadow-black/40 w-full md:w-auto">
+                                                                <FiDownload className="mr-3" size={18} /> Credentials
+                                                            </button>
+                                                        )}
+                                                        {(!isLetterValid(req) && req.status.includes('APPROVED')) && (
+                                                            <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-6 py-3 rounded-xl border border-red-500/20 uppercase tracking-widest text-center">Security Expired</span>
+                                                        )}
+                                                        {req.status === 'DENIED' && (
+                                                            <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-8 py-4 rounded-2xl border border-red-500/20 uppercase tracking-widest text-center">Request Denied</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div className="flex flex-col md:items-end gap-3 w-full md:w-auto">
-                                                {isLetterValid() && (
-                                                    <button onClick={() => setShowLetter(true)} className="flex items-center px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-2xl shadow-black/40 w-full md:w-auto">
-                                                        <FiDownload className="mr-3" size={18} /> Credentials
-                                                    </button>
-                                                )}
-                                                {currentRequest.status === 'FORWARDED_TO_HOD' && (
-                                                    <button onClick={simulateHODApproval} className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-6 py-3 rounded-xl border border-blue-500/20 hover:bg-blue-500/20 transition-all uppercase tracking-widest">Override Validation</button>
-                                                )}
-                                                {(!isLetterValid() && currentRequest.status.includes('APPROVED')) && (
-                                                    <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-6 py-3 rounded-xl border border-red-500/20 uppercase tracking-widest">Security Expired</span>
-                                                )}
-                                                {currentRequest.status === 'DENIED' && (
-                                                    <button onClick={() => setShowLetter(true)} className="flex items-center px-8 py-4 bg-red-600/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all active:scale-95 border border-red-600/20 w-full md:w-auto">
-                                                        <FiDownload className="mr-3" size={18} /> Rejection Notice
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </div>
+                                        ))}
                                     </div>
                                 </div>
                             )}

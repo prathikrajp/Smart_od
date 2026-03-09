@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiUploadCloud as UploadCloud, FiCheckCircle as CheckCircle2, FiXCircle as XCircle, FiAlertCircle as AlertCircle, FiUser as User, FiMapPin as MapPin, FiMaximize as Maximize, FiClock as Clock, FiSearch as Search, FiCalendar as Calendar, FiChevronDown as ChevronDown, FiChevronUp as ChevronUp, FiPause, FiPlay } from 'react-icons/fi';
 import { QRCodeSVG } from 'qrcode.react';
-import { odApi, dataApi, sessionApi, presenceApi, miscApi, uploadApi } from './api';
+import { odApi, dataApi, sessionApi, presenceApi, miscApi, uploadApi, notificationApi } from './api';
 
 const AdminDashboard = ({ user }) => {
     const [data, setData] = useState([]);
@@ -25,6 +25,7 @@ const AdminDashboard = ({ user }) => {
     const [viewingWork, setViewingWork] = useState(null);
     const [tick, setTick] = useState(0); // forces live elapsed-time re-render
     const [successMessage, setSuccessMessage] = useState(null);
+    const [notifications, setNotifications] = useState([]);
 
     useEffect(() => {
         // 0. Load Location Data from API
@@ -60,6 +61,12 @@ const AdminDashboard = ({ user }) => {
                     filteredReqs = safeReqs.filter(r => r.department === user?.department && r.status === 'FORWARDED_TO_HOD');
                 }
                 setPendingRequests(filteredReqs);
+
+                // Fetch Notifications for HOD
+                if (role === 'HOD') {
+                    const ntfList = await notificationApi.getNotifications('HOD', user.department);
+                    setNotifications(ntfList);
+                }
 
                 // Fetch Students & Metadata
                 const [students, savedMetadata] = await Promise.all([
@@ -202,6 +209,17 @@ const AdminDashboard = ({ user }) => {
             } else if (req.status === 'FORWARDED_TO_HOD') {
                 nextStatus = 'APPROVED';
             }
+            if (req.status === 'PENDING_ADVISOR' && (nextStatus === 'APPROVED' || nextStatus === 'FORWARDED_TO_HOD')) {
+                const message = `Advisor ${user.name} approved on duty for ${req.studentName} of ${req.yearOfStudy} year.`;
+                await notificationApi.createNotification({
+                    recipientRole: 'HOD',
+                    department: req.department,
+                    message,
+                    senderName: user.name,
+                    type: 'OD_APPROVAL'
+                });
+            }
+
             await updateRequestStatus(req.id, req.studentId, nextStatus);
         } catch (err) {
             console.error("Approval failed:", err);
@@ -414,6 +432,34 @@ const AdminDashboard = ({ user }) => {
                         )}
                     </div>
                 </div>
+
+                {user.role === 'HOD' && notifications.filter(n => !n.readBy?.includes(user.id)).length > 0 && (
+                    <div className="w-full mt-8 animate-fade-in px-4">
+                        <div className="flex items-center space-x-3 mb-4">
+                            <FiAlertCircle className="text-amber-500" />
+                            <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Priority Approval Stream</h3>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {notifications.filter(n => !n.readBy?.includes(user.id)).map(n => (
+                                <div key={n.id} className="bg-amber-500/5 border border-amber-500/10 rounded-2xl p-5 flex items-start justify-between group transition-all hover:bg-amber-500/10 active:scale-[0.98]">
+                                    <div className="space-y-1 pr-4">
+                                        <p className="text-xs font-bold text-gray-300 leading-relaxed italic">"{n.message}"</p>
+                                        <span className="text-[8px] font-black text-amber-500/60 uppercase tracking-widest block">{new Date(n.createdAt).toLocaleTimeString()}</span>
+                                    </div>
+                                    <button 
+                                        onClick={async () => {
+                                            await notificationApi.markRead(n.id, user.id);
+                                            setNotifications(prev => prev.map(nt => nt.id === n.id ? { ...nt, readBy: [...(nt.readBy || []), user.id] } : nt));
+                                        }}
+                                        className="text-gray-600 hover:text-white p-1 transition-colors"
+                                    >
+                                        <XCircle size={18} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {(user.role === 'ADVISOR' || user.role === 'HOD') && (
                     <div className="mt-6 md:mt-0 flex-1 md:mx-8 max-w-md relative group">

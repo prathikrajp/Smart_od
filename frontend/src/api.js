@@ -92,3 +92,14 @@ export const miscApi = {
         body: JSON.stringify(updates)
     })
 };
+
+export const notificationApi = {
+    getNotifications: (role, dept) => apiRequest(`/notifications/${role}${dept ? `?dept=${dept}` : ''}`),
+    createNotification: (data) => apiRequest('/notifications', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    }),
+    markRead: (id, userId) => apiRequest(`/notifications/read/${id}/${userId}`, {
+        method: 'PATCH'
+    })
+};

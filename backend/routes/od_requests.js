@@ -2,9 +2,14 @@ const express = require('express');
 const router = express.Router();
 const ODRequest = require('../models/ODRequest');
 
-// Get all requests
+// Get all requests (and cleanup expired ones)
 router.get('/', async (req, res) => {
     try {
+        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        // Cleanup expired ODs
+        await ODRequest.deleteMany({ endDate: { $lt: today } });
+
         const requests = await ODRequest.find().sort({ timestamp: -1 });
         res.json(requests);
     } catch (err) {
