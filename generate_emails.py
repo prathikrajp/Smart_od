@@ -61,11 +61,13 @@ def generate_emails():
         print("hod.csv not found")
 
     # Save to maild.csv
-    with open('public/maild.csv', 'w', newline='') as f:
-        fieldnames = ['id', 'name', 'role', 'email']
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(emails)
+    output_files = ['frontend/public/maild.csv', 'backend/data/maild.csv']
+    for out_file in output_files:
+        with open(out_file, 'w', newline='') as f:
+            fieldnames = ['id', 'name', 'role', 'email']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(emails)
     
     print(f"Successfully generated public/maild.csv with {len(emails)} entries.")
 

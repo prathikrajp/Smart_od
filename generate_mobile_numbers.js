@@ -48,7 +48,8 @@ async function main() {
         csvContent += `${f.id},${f.name},${f.role},${generateMobileNumber()}\n`;
     });
 
-    fs.writeFileSync('public/mobile_number.csv', csvContent);
+    fs.writeFileSync('frontend/public/mobile_number.csv', csvContent);
+    fs.writeFileSync('backend/data/mobile_number.csv', csvContent);
     fs.writeFileSync('mobile_number.csv', csvContent); // also save root for easy checking if needed
     console.log('mobile_number.csv generated with 10-digit numbers.');
 }

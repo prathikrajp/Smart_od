@@ -38,20 +38,29 @@ def generate_student_data(num_students_per_class=30):
         "EEE": "EE", "CVL": "CV", "VLSI": "VL", "ACT": "AC"
     }
 
+    # Tracking roll numbers per year and department
+    roll_counters = {}
+
     for advisor in advisors:
         dept = advisor['department']
         year_label = advisor['yearOfStudy']
         class_name = advisor['className']
         advisor_name = advisor['name']
         
-        # Batch year for ID (e.g., 2021 batch for 1st year in 2022, etc.)
-        # Simplified: Use fixed prefixes
+        # Batch year for ID
         year_prefix = {"1st": "24", "2nd": "23", "3rd": "22", "4th": "21"}[year_label]
+        short_dept = dept_prefix.get(dept, "XX")
         
-        for i in range(1, num_students_per_class + 1):
-            roll_num = str(i).zfill(3)
-            short_dept = dept_prefix.get(dept, "XX")
+        # Initialize counter if not exists
+        counter_key = f"{year_prefix}{short_dept}"
+        if counter_key not in roll_counters:
+            roll_counters[counter_key] = 1
+            
+        for i in range(num_students_per_class):
+            current_roll = roll_counters[counter_key]
+            roll_num = str(current_roll).zfill(3)
             student_id = f"{year_prefix}{short_dept}{roll_num}"
+            roll_counters[counter_key] += 1
             
             name = f"{random.choice(first_names)} {random.choice(last_names)}"
             
@@ -74,7 +83,7 @@ def generate_student_data(num_students_per_class=30):
             })
 
     # 3. Write Output
-    output_files = ['public/students.csv', 'students.csv']
+    output_files = ['frontend/public/students.csv', 'backend/data/students.csv', 'students.csv']
     for out_file in output_files:
         with open(out_file, mode='w', newline='') as f:
             writer = csv.DictWriter(f, fieldnames=["id", "name", "cgpa", "marks", "department", "yearOfStudy", "className", "classAdvisorName"])
