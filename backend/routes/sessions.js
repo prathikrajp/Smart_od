@@ -15,6 +15,16 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get historical sessions for a student
+router.get('/history/:studentId', async (req, res) => {
+    try {
+        const sessions = await Session.find({ studentId: req.params.studentId, isActive: false }).sort({ startTime: -1 });
+        res.json(sessions);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch historical sessions' });
+    }
+});
+
 // Start session
 router.post('/', async (req, res) => {
     try {

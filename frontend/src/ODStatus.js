@@ -184,9 +184,10 @@ const ODStatus = ({ user }) => {
     };
 
     const isLetterValid = () => {
-        if (!currentRequest || (currentRequest.status !== 'APPROVED' && currentRequest.status !== 'HOD_APPROVED')) return false;
-        const today = new Date().toISOString().split('T')[0];
-        return today >= currentRequest.startDate && today <= currentRequest.endDate;
+        if (!currentRequest) return false;
+        // The letter is valid as soon as it's approved or forwarded to HOD (after Advisor approval)
+        const allowedStatuses = ['APPROVED', 'FORWARDED_TO_HOD', 'HOD_APPROVED'];
+        return allowedStatuses.includes(currentRequest.status);
     };
 
     const simulateHODApproval = () => {
@@ -344,19 +345,22 @@ const ODStatus = ({ user }) => {
                                                 </div>
                                             </div>
                                             <div className="flex flex-col md:items-end gap-3 w-full md:w-auto">
-                                                {currentRequest.status === 'FORWARDED_TO_HOD' ? (
-                                                    <button onClick={simulateHODApproval} className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-6 py-3 rounded-xl border border-blue-500/20 hover:bg-blue-500/20 transition-all uppercase tracking-widest">Override Validation</button>
-                                                ) : (currentRequest.status.includes('APPROVED') && isLetterValid()) ? (
+                                                {isLetterValid() && (
                                                     <button onClick={() => setShowLetter(true)} className="flex items-center px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all active:scale-95 shadow-2xl shadow-black/40 w-full md:w-auto">
                                                         <FiDownload className="mr-3" size={18} /> Credentials
                                                     </button>
-                                                ) : (currentRequest.status.includes('APPROVED')) ? (
+                                                )}
+                                                {currentRequest.status === 'FORWARDED_TO_HOD' && (
+                                                    <button onClick={simulateHODApproval} className="text-[10px] font-black text-blue-500 bg-blue-500/10 px-6 py-3 rounded-xl border border-blue-500/20 hover:bg-blue-500/20 transition-all uppercase tracking-widest">Override Validation</button>
+                                                )}
+                                                {(!isLetterValid() && currentRequest.status.includes('APPROVED')) && (
                                                     <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-6 py-3 rounded-xl border border-red-500/20 uppercase tracking-widest">Security Expired</span>
-                                                ) : currentRequest.status === 'DENIED' ? (
+                                                )}
+                                                {currentRequest.status === 'DENIED' && (
                                                     <button onClick={() => setShowLetter(true)} className="flex items-center px-8 py-4 bg-red-600/10 text-red-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all active:scale-95 border border-red-600/20 w-full md:w-auto">
                                                         <FiDownload className="mr-3" size={18} /> Rejection Notice
                                                     </button>
-                                                ) : null}
+                                                )}
                                             </div>
                                         </div>
                                     </div>

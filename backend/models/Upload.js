@@ -2,16 +2,15 @@ const mongoose = require('mongoose');
 
 const uploadSchema = new mongoose.Schema({
     studentId: { type: String, required: true },
-    studentName: { type: String },
-    labName: { type: String, required: true },
-    projectName: { type: String, required: true },
-    techStack: { type: String, required: true },
-    duration: { type: Number, required: true }, // in minutes
-    fileData: { type: String, required: true }, // Base64 or URL
-    fileName: { type: String, required: true },
-    fileType: { type: String, required: true },
-    timestamp: { type: Number, required: true },
-    uploadedBy: { type: String, required: true } // student Id
+    topic: { type: String, required: true },
+    description: { type: String },
+    fileName: { type: String },
+    fileType: { type: String },
+    size: { type: String },
+    uploadDate: { type: String, required: true }, // YYYY-MM-DD
+    content: { type: String, required: true }, // Base64 or Composed text
+    isComposed: { type: Boolean, default: false },
+    timestamp: { type: Number, default: Date.now }
 });
 
 module.exports = mongoose.model('Upload', uploadSchema);

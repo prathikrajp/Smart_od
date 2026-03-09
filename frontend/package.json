@@ -12,6 +12,7 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "proxy": "http://localhost:5000",
   "dependencies": {
     "@craco/craco": "^6.4.5",
     "autoprefixer": "^9.8.8",

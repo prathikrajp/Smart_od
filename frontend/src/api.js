@@ -53,7 +53,8 @@ export const sessionApi = {
     updateSession: (studentId, updates) => apiRequest(`/sessions/${studentId}`, {
         method: 'PATCH',
         body: JSON.stringify(updates)
-    })
+    }),
+    getHistory: (studentId) => apiRequest(`/sessions/history/${studentId}`)
 };
 
 export const presenceApi = {

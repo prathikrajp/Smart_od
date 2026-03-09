@@ -93,15 +93,15 @@ const AdminDashboard = ({ user }) => {
                 const mergedWithMetadata = filteredStudents.map(s => {
                     const meta = (savedMetadata || {})[s.id] || {};
                     
-                    // Seed Rough Data if missing/zero
-                    const seededHours = s.coeHours || (Math.floor(Math.random() * 15) + 5);
+                    // Use totalWorkingMs from DB to calculate coeHours
+                    const coeHours = s.totalWorkingMs ? parseFloat((s.totalWorkingMs / (1000 * 3600)).toFixed(1)) : 0;
                     const seededProgress = s.workProgress || (Math.floor(Math.random() * 40) + 20);
 
                     return {
                         ...s,
                         achievements: meta.achievements || s.achievements || 'N/A',
                         remarks: meta.remarks || s.remarks || 'N/A',
-                        coeHours: seededHours,
+                        coeHours: coeHours,
                         workProgress: seededProgress
                     };
                 });
@@ -657,7 +657,7 @@ const AdminDashboard = ({ user }) => {
                                         s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                         (s.className || '').toLowerCase().includes(searchTerm.toLowerCase())
                                     )
-                                ).sort((a, b) => (a.className || '').localeCompare(b.className || '')).map((student) => {
+                                ).sort((a, b) => b.coeHours - a.coeHours).map((student) => {
                                     const portfolioKey = `${student.className}__${student.id}`;
                                     const portfolio = studentPortfolios[portfolioKey] || [];
                                     const hasUploads = portfolio.length > 0;
