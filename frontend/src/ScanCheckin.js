@@ -105,6 +105,7 @@ const ScanCheckin = ({ user }) => {
     const [classMetadata, setClassMetadata] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
     const [scanWindow, setScanWindow] = useState({ open: false, label: 'Initializing...', secondsRemaining: 0 });
+    const [locations, setLocations] = useState([]);
 
     // GPS auto-stop state
     const [gpsStatus, setGpsStatus] = useState(null); // 'inside' | 'outside' | 'unavailable' | null
@@ -228,13 +229,15 @@ const ScanCheckin = ({ user }) => {
                 }
 
                 // 4. Fetch All Location Metadata from API
-                const locations = await dataApi.getLocations();
+                const locs = await dataApi.getLocations();
+                setLocations(locs);
+                
                 if (myActiveOD) {
-                    const labMeta = locations.find(loc => loc.className === myActiveOD.labName);
+                    const labMeta = locs.find(loc => loc.className === myActiveOD.labName);
                     setLabMetadata(labMeta);
                     labMetadataRef.current = labMeta;
                 }
-                const classMeta = locations.find(loc => loc.className === user.className);
+                const classMeta = locs.find(loc => loc.className === user.className);
                 setClassMetadata(classMeta);
             } catch (err) { console.error(err); }
         };
@@ -408,6 +411,20 @@ const ScanCheckin = ({ user }) => {
             try {
                 const data = JSON.parse(scannedData);
                 if (data.type && data.name) {
+                    // ── BSSID Verification Level ─────────────────────────────────────
+                    // Find the expected BSSID for this location name from MAC_address.csv
+                    const locationEntry = locations.find(l => l.className === data.name);
+                    const expectedBssid = locationEntry?.bssid;
+                    const scannedBssid = data.bssid;
+
+                    // If we have an expected BSSID, verify it matches the scan
+                    if (expectedBssid && scannedBssid && expectedBssid.toLowerCase() !== scannedBssid.toLowerCase()) {
+                        console.error(`[Security] BSSID Mismatch! Expected: ${expectedBssid}, Scanned: ${scannedBssid}`);
+                        setResult('error_bssid');
+                        setScanning(false);
+                        return;
+                    }
+
                     // Report presence to backend
                     presenceApi.reportPresence({
                         studentId: user.id,
@@ -417,8 +434,8 @@ const ScanCheckin = ({ user }) => {
                         type: data.type,
                         name: data.name,
                         facultyId: data.id,
-                        floor: data.floor || 'Ground Floor',
-                        bssid: data.bssid || 'N/A',
+                        floor: data.floor || locationEntry?.floor || 'Ground Floor',
+                        bssid: scannedBssid || expectedBssid || 'N/A',
                         timestamp: new Date().toISOString()
                     });
 
@@ -701,15 +718,21 @@ const ScanCheckin = ({ user }) => {
                                     <div className="bg-red-500/10 text-red-500 rounded-[2rem] p-8 mb-8 border border-red-500/20">
                                         <XCircle size={64} />
                                     </div>
-                                    <h3 className="text-2xl font-black text-white mb-4 uppercase">Signal Collision</h3>
-                                    <p className="text-gray-500 mb-8 text-xs font-medium">Authentication failed. Unable to resolve campus BSSID.</p>
+                                    <h3 className="text-2xl font-black text-white mb-4 uppercase">
+                                        {result === 'error_bssid' ? 'BSSID Mismatch' : 'Signal Collision'}
+                                    </h3>
+                                    <p className="text-gray-500 mb-8 text-xs font-medium">
+                                        {result === 'error_bssid' 
+                                            ? 'Hardware authentication failed. Scanned AP does not match physical location metadata.' 
+                                            : 'Authentication failed. Unable to resolve campus BSSID.'}
+                                    </p>
                                 </>
                             )}
                             <button
                                 onClick={() => setResult(null)}
                                 className="w-full mt-6 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-200 active:scale-95 shadow-2xl"
                             >
-                                Re-verify Location
+                                {result === 'error_bssid' ? 'Try Again' : 'Re-verify Location'}
                             </button>
                         </div>
                     )}
