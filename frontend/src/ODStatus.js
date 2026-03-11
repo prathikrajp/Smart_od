@@ -27,8 +27,7 @@ const ODStatus = ({ user }) => {
         labName: '',
         labInchargeName: '',
         purpose: '',
-        inTime: '08:00',
-        outTime: '17:00',
+        timeSlot: 'Slot-1', // Default slot
         startDate: '',
         endDate: '',
         advisorName: '',
@@ -166,8 +165,18 @@ const ODStatus = ({ user }) => {
         e.preventDefault();
         setLoading(true);
 
+        // Map slots to times
+        const slotMap = {
+            'Slot-1': { inTime: '09:30', outTime: '12:30' },
+            'Slot-2': { inTime: '12:30', outTime: '15:30' },
+            'Slot-3': { inTime: '09:30', outTime: '15:30' }
+        };
+        const { inTime, outTime } = slotMap[formData.timeSlot];
+
         const newRequest = {
             ...formData,
+            inTime,
+            outTime,
             id: `OD-${Date.now()}-${Math.floor(Math.random() * 1000)}`, // Required for AdminDashboard action mapping
             studentId: user.id,
             studentName: user.name,
@@ -494,15 +503,18 @@ const ODStatus = ({ user }) => {
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">In Bound</label>
-                                            <input required type="time" className="form-input" value={formData.inTime} onChange={e => setFormData({ ...formData, inTime: e.target.value })} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Out Bound</label>
-                                            <input required type="time" className="form-input" value={formData.outTime} onChange={e => setFormData({ ...formData, outTime: e.target.value })} />
-                                        </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-gray-600 uppercase tracking-widest mb-3 ml-1">Allocation Time Slot</label>
+                                        <select 
+                                            required 
+                                            className="form-input" 
+                                            value={formData.timeSlot} 
+                                            onChange={e => setFormData({ ...formData, timeSlot: e.target.value })}
+                                        >
+                                            <option value="Slot-1">Slot-1 09:30 am to 12:30 pm</option>
+                                            <option value="Slot-2">Slot-2 12:30 pm to 03:30 pm</option>
+                                            <option value="Slot-3">Slot-3 09:30 am to 03:30 pm</option>
+                                        </select>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>

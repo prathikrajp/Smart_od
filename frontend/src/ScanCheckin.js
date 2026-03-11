@@ -218,7 +218,7 @@ const ScanCheckin = ({ user }) => {
             try {
                 const allRequests = await odApi.getAllRequests();
                 const myActiveOD = allRequests
-                    .filter(r => r.studentId === user.id && r.status === 'APPROVED')
+                    .filter(r => r.studentId === user.id && (r.status === 'APPROVED' || r.status === 'HOD_APPROVED'))
                     .sort((a, b) => b.id - a.id)[0];
 
                 if (myActiveOD) {
@@ -412,81 +412,18 @@ const ScanCheckin = ({ user }) => {
                 const data = JSON.parse(scannedData);
                 if (data.type && data.name) {
                     // ── BSSID Verification Level ─────────────────────────────────────
-                    // Find the expected BSSID for this location name from MAC_address.csv
                     const locationEntry = locations.find(l => l.className === data.name);
                     const expectedBssid = locationEntry?.bssid;
                     const scannedBssid = data.bssid;
 
-                    // If we have an expected BSSID, verify it matches the scan
                     if (expectedBssid && scannedBssid && expectedBssid.toLowerCase() !== scannedBssid.toLowerCase()) {
-                        console.error(`[Security] BSSID Mismatch! Expected: ${expectedBssid}, Scanned: ${scannedBssid}`);
                         setResult('error_bssid');
                         setScanning(false);
                         return;
                     }
 
-                    // Report presence to backend
-                    presenceApi.reportPresence({
-                        studentId: user.id,
-                        studentName: user.name,
-                        advisorName: user.classAdvisorName, // Added for dual notifications
-                        className: user.className,           // Added for dual notifications
-                        type: data.type,
-                        name: data.name,
-                        facultyId: data.id,
-                        floor: data.floor || locationEntry?.floor || 'Ground Floor',
-                        bssid: scannedBssid || expectedBssid || 'N/A',
-                        timestamp: new Date().toISOString()
-                    });
-
-                    // ── Auto-Start COE Lab Session Timer on QR Scan ──────────────
-                    if (data.type === 'LAB') {
-                        const startSession = async () => {
-                            try {
-                                const sessions = await sessionApi.getActiveSessions();
-                                if (!sessions[user.id]?.isActive) {
-                                    const labMeta = labMetadataRef.current;
-                                    const gpsRegion = (labMeta?.lat && labMeta?.lng)
-                                        ? {
-                                            lat: parseFloat(labMeta.lat),
-                                            lng: parseFloat(labMeta.lng),
-                                            radius: parseFloat(labMeta.radius) || GPS_RADIUS_METERS
-                                        }
-                                        : null;
-
-                                    await sessionApi.startSession({
-                                        studentId: user.id,
-                                        labName: data.name,
-                                        studentName: user.name,
-                                        startedBy: 'QR_SCAN',
-                                        gpsRegion
-                                    });
-                                    activeSessionRef.current = true;
-                                    if (gpsRegion) startGPSWatch(labMeta, user.id);
-                                }
-                            } catch (err) { console.error(err); }
-                        };
-                        startSession();
-                    }
-
-                    if (activeOD) {
-                        odApi.updateStatus(activeOD.id, { scanned: true }).then(() => {
-                            setActiveOD({ ...activeOD, scanned: true });
-                        });
-                    }
-
-                    // ── Trigger Digital Sign-In Notification for Lab Incharge ──
-                    if (data.type === 'LAB') {
-                        const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        // We can use a dedicated notification object or just rely on the Presence record.
-                        // Here we'll ensure the presenceApi.reportPresence is called and perhaps add a specific flag.
-                        console.log(`[Notification] ${user.name} digitally signed in into ${data.name} at ${time}`);
-                    }
-
-                    setLocationInfo(data);
+                    setLocationInfo({ ...data, floor: data.floor || locationEntry?.floor || 'Ground Floor' });
                     setResult('success');
-                    
-                    // Reset Face Verification so it must be done again for next scan (e.g. going from Lab to Class)
                     setFaceVerified(false);
                     setFaceStatus("Face Verification Required");
                 } else {
@@ -497,6 +434,76 @@ const ScanCheckin = ({ user }) => {
             }
             setScanning(false);
         }, 1200);
+    };
+
+    const handleDigitalSignIn = async () => {
+        setScanning(true);
+        try {
+            const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const message = `${user.name} from ${user.department || 'N/A'} dept digitally signed in to ${locationInfo.name} by ${time}`;
+
+            // 1. Send Notification to Lab Incharge and Advisor
+            const ntfData = {
+                title: 'Digital Sign-In Alert',
+                message,
+                department: user.department,
+                type: 'SIGN_IN',
+                timestamp: new Date().toISOString()
+            };
+
+            await notificationApi.createNotification({ ...ntfData, recipientRole: 'LAB_INCHARGE' });
+            await notificationApi.createNotification({ ...ntfData, recipientRole: 'ADVISOR' });
+
+            // 2. Report presence to backend
+            await presenceApi.reportPresence({
+                studentId: user.id,
+                studentName: user.name,
+                advisorName: user.classAdvisorName,
+                className: user.className,
+                type: locationInfo.type,
+                name: locationInfo.name,
+                facultyId: locationInfo.id,
+                floor: locationInfo.floor,
+                bssid: locationInfo.bssid || 'N/A',
+                timestamp: new Date().toISOString()
+            });
+
+            // 3. Auto-Start Session if LAB
+            if (locationInfo.type === 'LAB') {
+                const sessions = await sessionApi.getActiveSessions();
+                if (!sessions[user.id]?.isActive) {
+                    const labMeta = labMetadataRef.current;
+                    const gpsRegion = (labMeta?.lat && labMeta?.lng)
+                        ? {
+                            lat: parseFloat(labMeta.lat),
+                            lng: parseFloat(labMeta.lng),
+                            radius: parseFloat(labMeta.radius) || GPS_RADIUS_METERS
+                        }
+                        : null;
+
+                    await sessionApi.startSession({
+                        studentId: user.id,
+                        labName: locationInfo.name,
+                        studentName: user.name,
+                        startedBy: 'DIGITAL_SIGN_IN',
+                        gpsRegion
+                    });
+                    activeSessionRef.current = true;
+                    if (gpsRegion) startGPSWatch(labMeta, user.id);
+                }
+            }
+
+            if (activeOD) {
+                await odApi.updateStatus(activeOD.id, { scanned: true });
+                setActiveOD({ ...activeOD, scanned: true });
+            }
+
+            setResult('signed_in');
+        } catch (err) {
+            console.error(err);
+            setResult('error_location');
+        }
+        setScanning(false);
     };
 
     // Derive whether each button should be active
@@ -712,6 +719,28 @@ const ScanCheckin = ({ user }) => {
                                             <p className="text-sm font-black text-emerald-400 font-mono tracking-tighter">{locationInfo.name}</p>
                                         </div>
                                     </div>
+
+                                    <button 
+                                        onClick={handleDigitalSignIn}
+                                        className="w-full mt-8 py-6 bg-blue-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-blue-900/40 animate-pulse active:scale-95 border border-blue-400/20"
+                                    >
+                                        Digitally Sign in
+                                    </button>
+                                </>
+                            ) : result === 'signed_in' ? (
+                                <>
+                                    <div className="bg-blue-500/10 text-blue-500 rounded-[2rem] p-8 mb-6 border border-blue-500/20">
+                                        <CheckCircle2 size={64} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Sign-In Complete</h3>
+                                    <p className="text-gray-500 text-xs font-medium mb-6">Notifications dispatched to Lab Incharge & Advisor.</p>
+                                    
+                                    <div className="w-full bg-white/5 p-6 rounded-3xl border border-white/5 text-left">
+                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-1">Status Report</p>
+                                        <p className="text-[11px] text-gray-300 font-bold leading-relaxed">
+                                            Verification Successful. Secure session established at {locationInfo.name}.
+                                        </p>
+                                    </div>
                                 </>
                             ) : (
                                 <>
@@ -728,12 +757,22 @@ const ScanCheckin = ({ user }) => {
                                     </p>
                                 </>
                             )}
-                            <button
-                                onClick={() => setResult(null)}
-                                className="w-full mt-6 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-200 active:scale-95 shadow-2xl"
-                            >
-                                {result === 'error_bssid' ? 'Try Again' : 'Re-verify Location'}
-                            </button>
+                            {(result !== 'signed_in') && (
+                                <button
+                                    onClick={() => setResult(null)}
+                                    className="w-full mt-6 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-200 active:scale-95 shadow-2xl"
+                                >
+                                    {result === 'error_bssid' ? 'Try Again' : 'Re-verify Location'}
+                                </button>
+                            )}
+                            {result === 'signed_in' && (
+                                <button
+                                    onClick={() => setResult(null)}
+                                    className="w-full mt-6 py-5 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-white/10 active:scale-95 shadow-2xl"
+                                >
+                                    Close Portal
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
