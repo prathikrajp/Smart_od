@@ -8,8 +8,8 @@ const activeTimers = {};
 // In-memory class return timer store: { [studentId]: timeoutHandle }
 const classReturnTimers = {};
 
-// Fixed break buffer duration (15 minutes)
-const BREAK_BUFFER_MS = 15 * 60 * 1000;
+// Fixed break buffer duration (20 minutes)
+const BREAK_BUFFER_MS = 20 * 60 * 1000;
 
 // Helper: create and save a notification
 const sendNotification = async (message, department, type = 'BREAK_ALERT') => {
@@ -107,8 +107,14 @@ router.post('/stop', async (req, res) => {
         // ── Class Attendance Flow ────────────────────────────────────────────
         if (stoppedBy === 'CLASS_SCAN' && className) {
             const classStart = new Date();
-            const classEnd = new Date(classStart.getTime() + 45 * 60 * 1000);
-            const returnDeadline = new Date(classEnd.getTime() + 15 * 60 * 1000);
+            
+            // Constraint: No one can attend class after 3:00 PM (15:00)
+            if (classStart.getHours() >= 15) {
+                return res.status(400).json({ error: 'Class attendance is not permitted after 3:00 PM' });
+            }
+
+            const classEnd = new Date(classStart.getTime() + 45 * 60 * 1000); // 45 min duration
+            const returnDeadline = new Date(classEnd.getTime() + 15 * 60 * 1000); // 15 min return buffer
 
             timer.classAttendance = {
                 className,
@@ -137,7 +143,7 @@ router.post('/stop', async (req, res) => {
             if (classReturnTimers[studentId]) {
                 clearTimeout(classReturnTimers[studentId]);
             }
-            const returnCheckMs = (45 + 15) * 60 * 1000; // 60 min total
+            const returnCheckMs = (45 + 15) * 60 * 1000; // 45 min class + 15 min buffer (60 min total)
             classReturnTimers[studentId] = setTimeout(async () => {
                 try {
                     // Check if student has scanned lab exit QR since class started

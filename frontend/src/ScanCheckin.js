@@ -513,6 +513,15 @@ const ScanCheckin = ({ user }) => {
     const handleDigitalSignIn = async () => {
         setScanning(true);
         try {
+            if (locationInfo.type === 'CLASS') {
+                const now = new Date();
+                if (now.getHours() >= 15) {
+                    setResult('error_3pm_cutoff');
+                    setScanning(false);
+                    return;
+                }
+            }
+
             const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const message = `${user.name} from ${user.department || 'N/A'} dept digitally signed in to ${locationInfo.name} by ${time}`;
 
@@ -907,11 +916,14 @@ const ScanCheckin = ({ user }) => {
                                         <XCircle size={64} />
                                     </div>
                                     <h3 className="text-2xl font-black text-white mb-4 uppercase">
-                                        {result === 'error_bssid' ? 'BSSID Mismatch' : 'Signal Collision'}
+                                        {result === 'error_bssid' ? 'BSSID Mismatch' : 
+                                         result === 'error_3pm_cutoff' ? 'Access Denied' : 'Signal Collision'}
                                     </h3>
                                     <p className="text-gray-500 mb-8 text-xs font-medium">
                                         {result === 'error_bssid' 
                                             ? 'Hardware authentication failed. Scanned AP does not match physical location metadata.' 
+                                            : result === 'error_3pm_cutoff'
+                                            ? 'Class attendance is not permitted after 3:00 PM.'
                                             : 'Authentication failed. Unable to resolve campus BSSID.'}
                                     </p>
                                 </>

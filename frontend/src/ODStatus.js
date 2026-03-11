@@ -17,6 +17,7 @@ const ODStatus = ({ user }) => {
     const [selectedDate, setSelectedDate] = useState(null);
     const [showTimeline, setShowTimeline] = useState(false);
     const [coeSessions, setCoeSessions] = useState([]);
+    const [studentUploads, setStudentUploads] = useState([]);
     const [tick, setTick] = useState(0);
 
     // Faculty Data lists
@@ -93,6 +94,11 @@ const ODStatus = ({ user }) => {
         sessionApi.getActiveSessions().then(s => {
             const sessions = typeof s === 'object' ? Object.values(s) : [];
             setCoeSessions(sessions.filter(sess => sess.studentId === user.id));
+        }).catch(() => {});
+
+        // Load student uploads for timeline filtering
+        uploadApi.getUploads(user.id).then(u => {
+            setStudentUploads(Array.isArray(u) ? u : []);
         }).catch(() => {});
 
         // Tick for live countdowns
@@ -515,15 +521,23 @@ const ODStatus = ({ user }) => {
                                 const firstDay = new Date(year, month, 1).getDay();
                                 const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-                                // Collect days that have COE session data
+                                // Collect days that have COE session data AND a work upload
                                 const sessionDays = new Set();
+                                const uploadDays = new Set(studentUploads.map(u => {
+                                    const d = new Date(u.uploadDate);
+                                    return d.getMonth() === month && d.getFullYear() === year ? d.getDate() : null;
+                                }).filter(d => d !== null));
+
                                 requestHistory.filter(r => r.status === 'APPROVED' || r.status === 'HOD_APPROVED').forEach(req => {
                                     if (req.startDate && req.endDate) {
                                         const start = new Date(req.startDate);
                                         const end = new Date(req.endDate);
                                         for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
                                             if (d.getMonth() === month && d.getFullYear() === year) {
-                                                sessionDays.add(d.getDate());
+                                                const day = d.getDate();
+                                                if (uploadDays.has(day)) {
+                                                    sessionDays.add(day);
+                                                }
                                             }
                                         }
                                     }
@@ -550,8 +564,9 @@ const ODStatus = ({ user }) => {
                                                             isSelected ? 'bg-emerald-500 text-white scale-110 shadow-lg shadow-emerald-900/40' :
                                                             isToday ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
                                                             hasSession ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' :
-                                                            'text-gray-600 hover:bg-white/5'
+                                                            'text-gray-600 opacity-30 cursor-not-allowed'
                                                         }`}
+                                                        disabled={!hasSession && !isSelected}
                                                     >
                                                         {day}
                                                     </button>
@@ -559,7 +574,7 @@ const ODStatus = ({ user }) => {
                                             })}
                                         </div>
                                         <div className="flex items-center gap-4 mt-4 justify-center text-[9px] font-bold text-gray-500">
-                                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/40 rounded"></span> OD Logged</span>
+                                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/40 rounded"></span> OD + Work Upload</span>
                                             <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500/40 rounded"></span> Today</span>
                                         </div>
                                     </div>
@@ -691,6 +706,9 @@ const ODStatus = ({ user }) => {
                                                                         </p>
                                                                         <p className="text-[10px] text-gray-500 font-bold">
                                                                             {brkStart.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} — {brkEnd.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} ({durationMin} min)
+                                                                        </p>
+                                                                        <p className="text-[8px] font-black uppercase tracking-tighter text-gray-600 mt-1">
+                                                                            {isClass ? 'Required min: 45m' : 'Required min: 20m'}
                                                                         </p>
                                                                         {brk.status === 'EXPIRED' && (
                                                                             <p className="text-[9px] text-red-400 font-black uppercase tracking-widest mt-1">⚠ Timer Expired — Absent notification sent</p>
