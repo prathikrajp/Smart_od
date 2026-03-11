@@ -93,6 +93,18 @@ export const miscApi = {
     })
 };
 
+export const breakTimerApi = {
+    startBreak: (data) => apiRequest('/break-timers', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    }),
+    stopBreak: (data) => apiRequest('/break-timers/stop', {
+        method: 'POST',
+        body: JSON.stringify(data)
+    }),
+    getActiveBreak: (studentId) => apiRequest(`/break-timers/${studentId}`)
+};
+
 export const notificationApi = {
     getNotifications: (role, dept) => apiRequest(`/notifications/${role}${dept ? `?dept=${dept}` : ''}`),
     createNotification: (data) => apiRequest('/notifications', {

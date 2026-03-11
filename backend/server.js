@@ -30,6 +30,7 @@ app.use('/api/violations', require('./routes/misc').violationsRouter);
 app.use('/api/metadata', require('./routes/misc').metadataRouter);
 app.use('/api/working-time', require('./routes/misc').workingTimeRouter);
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/break-timers', require('./routes/break_timers'));
 
 // ── Health Check ──────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => res.json({ status: 'ok', time: new Date().toISOString() }));

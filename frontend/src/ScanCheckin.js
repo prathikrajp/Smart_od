@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiCamera as Camera, FiCheckCircle as CheckCircle2, FiXCircle as XCircle, FiInfo, FiClock, FiMapPin, FiWifi } from 'react-icons/fi';
 import { MdFingerprint as Fingerprint } from 'react-icons/md';
-import { presenceApi, sessionApi, odApi, dataApi } from './api';
+import { presenceApi, sessionApi, odApi, dataApi, breakTimerApi, notificationApi } from './api';
 import { Html5Qrcode } from 'html5-qrcode';
 
 // ─── GPS Geofencing Configuration ─────────────────────────────────────────────
@@ -422,10 +422,18 @@ const ScanCheckin = ({ user }) => {
                         return;
                     }
 
-                    setLocationInfo({ ...data, floor: data.floor || locationEntry?.floor || 'Ground Floor' });
-                    setResult('success');
-                    setFaceVerified(false);
-                    setFaceStatus("Face Verification Required");
+                    const enrichedData = { ...data, floor: data.floor || locationEntry?.floor || 'Ground Floor' };
+                    setLocationInfo(enrichedData);
+
+                    // ── EXIT Scan: Start break timer ─────────────────────────────
+                    if (data.scanType === 'EXIT') {
+                        setResult('exit_scanned');
+                    } else {
+                        // ENTRY scan (default)
+                        setResult('success');
+                        setFaceVerified(false);
+                        setFaceStatus("Face Verification Required");
+                    }
                 } else {
                     setResult('error_location');
                 }
@@ -434,6 +442,39 @@ const ScanCheckin = ({ user }) => {
             }
             setScanning(false);
         }, 1200);
+    };
+
+    // ── Handle Exit Scan: start break timer ──────────────────────────────────
+    const handleExitScan = async () => {
+        setScanning(true);
+        try {
+            const slot = activeOD?.timeSlot || activeOD?.inTime === '09:30' && activeOD?.outTime === '15:30' ? 'Slot-3'
+                : activeOD?.inTime === '12:30' ? 'Slot-2' : 'Slot-1';
+
+            await breakTimerApi.startBreak({
+                studentId: user.id,
+                studentName: user.name,
+                labName: locationInfo.name,
+                department: user.department,
+                timeSlot: slot
+            });
+
+            // End active lab session
+            try {
+                await sessionApi.updateSession(user.id, {
+                    isActive: false,
+                    stoppedBy: 'EXIT_SCAN',
+                    endTime: Date.now()
+                });
+                activeSessionRef.current = false;
+            } catch (e) { /* no active session is fine */ }
+
+            setResult('break_started');
+        } catch (err) {
+            console.error(err);
+            setResult('error_location');
+        }
+        setScanning(false);
     };
 
     const handleDigitalSignIn = async () => {
@@ -454,7 +495,17 @@ const ScanCheckin = ({ user }) => {
             await notificationApi.createNotification({ ...ntfData, recipientRole: 'LAB_INCHARGE' });
             await notificationApi.createNotification({ ...ntfData, recipientRole: 'ADVISOR' });
 
-            // 2. Report presence to backend
+            // 2. Stop any active break timer (student re-entered)
+            try {
+                const stopResult = await breakTimerApi.stopBreak({
+                    studentId: user.id,
+                    stoppedBy: locationInfo.type === 'CLASS' ? 'CLASS_SCAN' : 'ENTRY_SCAN',
+                    className: locationInfo.type === 'CLASS' ? locationInfo.name : undefined
+                });
+                console.log('[BreakTimer] Stop result:', stopResult);
+            } catch (e) { /* no active timer is fine */ }
+
+            // 3. Report presence to backend
             await presenceApi.reportPresence({
                 studentId: user.id,
                 studentName: user.name,
@@ -468,7 +519,7 @@ const ScanCheckin = ({ user }) => {
                 timestamp: new Date().toISOString()
             });
 
-            // 3. Auto-Start Session if LAB
+            // 4. Auto-Start Session if LAB entry
             if (locationInfo.type === 'LAB') {
                 const sessions = await sessionApi.getActiveSessions();
                 if (!sessions[user.id]?.isActive) {
@@ -742,6 +793,52 @@ const ScanCheckin = ({ user }) => {
                                         </p>
                                     </div>
                                 </>
+                            ) : result === 'exit_scanned' ? (
+                                <>
+                                    <div className="bg-orange-500/10 text-orange-500 rounded-[2rem] p-8 mb-6 border border-orange-500/20">
+                                        <FiClock size={64} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Exit Scanner Detected</h3>
+                                    <p className="text-gray-500 text-xs font-medium mb-6">You are about to leave {locationInfo?.name}. Your break timer will start.</p>
+
+                                    <div className="w-full space-y-3 text-left bg-white/5 p-6 rounded-3xl border border-white/5 mb-6">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Break Allocation</p>
+                                            <p className="text-sm font-bold text-white">
+                                                {activeOD?.timeSlot === 'Slot-3' || (activeOD?.inTime === '09:30' && activeOD?.outTime === '15:30') ? '60 min' : '20 min'}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Location</p>
+                                            <p className="text-sm font-bold text-white">{locationInfo?.name}</p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleExitScan}
+                                        disabled={scanning}
+                                        className="w-full py-6 bg-orange-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-orange-900/40 active:scale-95 border border-orange-400/20 disabled:opacity-50"
+                                    >
+                                        {scanning ? 'Processing...' : 'Start Break Timer'}
+                                    </button>
+                                </>
+                            ) : result === 'break_started' ? (
+                                <>
+                                    <div className="bg-orange-500/10 text-orange-400 rounded-[2rem] p-8 mb-6 border border-orange-500/20">
+                                        <FiClock size={64} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Break Timer Active</h3>
+                                    <p className="text-gray-500 text-xs font-medium mb-6">
+                                        Your break has started. Return before the timer expires or scan a classroom entry QR to attend a lecture.
+                                    </p>
+
+                                    <div className="w-full bg-orange-500/5 p-6 rounded-3xl border border-orange-500/10 text-left">
+                                        <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Reminder</p>
+                                        <p className="text-[11px] text-gray-300 font-bold leading-relaxed">
+                                            If you do not scan any QR code before your break expires, an absence notification will be automatically sent to your Lab Incharge and Class Advisor.
+                                        </p>
+                                    </div>
+                                </>
                             ) : (
                                 <>
                                     <div className="bg-red-500/10 text-red-500 rounded-[2rem] p-8 mb-8 border border-red-500/20">
@@ -757,7 +854,7 @@ const ScanCheckin = ({ user }) => {
                                     </p>
                                 </>
                             )}
-                            {(result !== 'signed_in') && (
+                            {!['signed_in', 'break_started', 'exit_scanned'].includes(result) && (
                                 <button
                                     onClick={() => setResult(null)}
                                     className="w-full mt-6 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-200 active:scale-95 shadow-2xl"
@@ -765,7 +862,7 @@ const ScanCheckin = ({ user }) => {
                                     {result === 'error_bssid' ? 'Try Again' : 'Re-verify Location'}
                                 </button>
                             )}
-                            {result === 'signed_in' && (
+                            {['signed_in', 'break_started'].includes(result) && (
                                 <button
                                     onClick={() => setResult(null)}
                                     className="w-full mt-6 py-5 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-white/10 active:scale-95 shadow-2xl"
