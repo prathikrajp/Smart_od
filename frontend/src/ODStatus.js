@@ -3,7 +3,7 @@ import { FiFileText, FiCheckCircle, FiXCircle, FiTrendingUp, FiBarChart2, FiSend
 import ODLetter from './ODLetter';
 import UploadWork from './UploadWork';
 import Papa from 'papaparse';
-import { odApi, dataApi, miscApi, breakTimerApi, sessionApi, uploadApi } from './api';
+import { odApi, dataApi, miscApi, breakTimerApi, sessionApi, uploadApi, presenceApi } from './api';
 
 const ODStatus = ({ user }) => {
     const [showForm, setShowForm] = useState(false);
@@ -15,9 +15,9 @@ const ODStatus = ({ user }) => {
     const [activeTab, setActiveTab] = useState('ACADEMIC'); // ACADEMIC, PORTFOLIO, or COE_TIMELINE
     const [breakHistory, setBreakHistory] = useState([]);
     const [selectedDate, setSelectedDate] = useState(null);
-    const [showTimeline, setShowTimeline] = useState(false);
     const [coeSessions, setCoeSessions] = useState([]);
     const [studentUploads, setStudentUploads] = useState([]);
+    const [sessionHistory, setSessionHistory] = useState([]);
     const [tick, setTick] = useState(0);
 
     // Faculty Data lists
@@ -99,6 +99,11 @@ const ODStatus = ({ user }) => {
         // Load student uploads for timeline filtering
         uploadApi.getUploads(user.id).then(u => {
             setStudentUploads(Array.isArray(u) ? u : []);
+        }).catch(() => {});
+
+        // Load session history for accurate timeline
+        sessionApi.getHistory(user.id).then(h => {
+            setSessionHistory(Array.isArray(h) ? h : []);
         }).catch(() => {});
 
         // Tick for live countdowns
@@ -301,12 +306,6 @@ const ODStatus = ({ user }) => {
                         Academic Status
                     </button>
                     <button
-                        onClick={() => setActiveTab('COE_TIMELINE')}
-                        className={`flex-1 py-6 text-xs font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'COE_TIMELINE' ? 'text-emerald-500 border-b-2 border-emerald-500 bg-emerald-500/5' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
-                    >
-                        COE Timeline
-                    </button>
-                    <button
                         onClick={() => setActiveTab('PORTFOLIO')}
                         className={`flex-1 py-6 text-xs font-black uppercase tracking-[0.2em] transition-all ${activeTab === 'PORTFOLIO' ? 'text-blue-500 border-b-2 border-blue-500 bg-blue-500/5' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
                     >
@@ -487,317 +486,6 @@ const ODStatus = ({ user }) => {
                                 </div>
                             )}
                         </>
-                    ) : activeTab === 'COE_TIMELINE' ? (
-                        /* ── COE Timeline View ────────────────────────────────────── */
-                        <div className="animate-fade-in">
-                            <h3 className="text-xl font-black text-white mb-8 flex items-center tracking-tight">
-                                <div className="w-8 h-8 bg-emerald-500/10 text-emerald-500 rounded-lg flex items-center justify-center mr-4 border border-emerald-500/20">
-                                    <FiClock size={16} />
-                                </div>
-                                COE Working Hours Timeline
-                            </h3>
-
-                            {/* Assigned Slot Badge */}
-                            <div className="mb-8 p-5 bg-blue-500/5 rounded-[2rem] border border-blue-500/10 flex items-center justify-between">
-                                <div>
-                                    <p className="text-[9px] font-black text-blue-500/60 uppercase tracking-widest mb-1">Assigned Time Slot</p>
-                                    <p className="text-lg font-black text-white">
-                                        {getDefaultSlot(user.id) === 'Slot-1' ? 'Slot-1 — 09:30 AM to 12:30 PM' :
-                                         getDefaultSlot(user.id) === 'Slot-2' ? 'Slot-2 — 12:30 PM to 03:30 PM' :
-                                         'Slot-3 — 09:30 AM to 03:30 PM'}
-                                    </p>
-                                </div>
-                                <span className="px-4 py-2 bg-blue-500/10 text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest border border-blue-500/20">
-                                    {getDefaultSlot(user.id)}
-                                </span>
-                            </div>
-
-                            {/* Mini Calendar */}
-                            {(() => {
-                                const today = new Date();
-                                const year = today.getFullYear();
-                                const month = today.getMonth();
-                                const daysInMonth = new Date(year, month + 1, 0).getDate();
-                                const firstDay = new Date(year, month, 1).getDay();
-                                const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
-
-                                // Helper: Get local YYYY-MM-DD from Date or string
-                                const getLocalDateStr = (val) => {
-                                    if (!val) return "";
-                                    const d = new Date(val);
-                                    if (isNaN(d.getTime())) return "";
-                                    return d.getFullYear() + "-" + 
-                                           String(d.getMonth() + 1).padStart(2, '0') + "-" + 
-                                           String(d.getDate()).padStart(2, '0');
-                                };
-
-                                // Collect dates that have BOTH an approved OD session AND a work upload
-                                const uploadDates = new Set(studentUploads.map(u => getLocalDateStr(u.uploadDate)));
-                                const sessionDays = new Set();
-                                
-                                requestHistory.filter(r => r.status === 'APPROVED' || r.status === 'HOD_APPROVED').forEach(req => {
-                                    if (req.startDate && req.endDate) {
-                                        // Simple string-based range check for this month
-                                        const startDay = new Date(req.startDate);
-                                        const endDay = new Date(req.endDate);
-                                        for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
-                                            const dStr = getLocalDateStr(d);
-                                            if (uploadDates.has(dStr)) {
-                                                const dDate = new Date(d);
-                                                if (dDate.getMonth() === month && dDate.getFullYear() === year) {
-                                                    sessionDays.add(dDate.getDate());
-                                                }
-                                            }
-                                        }
-                                    }
-                                });
-
-                                return (
-                                    <div className="bg-white/5 rounded-[2rem] border border-white/5 p-6 mb-8">
-                                        <p className="text-center text-sm font-black text-white mb-4 uppercase tracking-widest">{monthName}</p>
-                                        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-black text-gray-500 uppercase tracking-widest mb-2">
-                                            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
-                                        </div>
-                                        <div className="grid grid-cols-7 gap-1">
-                                            {Array.from({ length: firstDay }).map((_, i) => <div key={`empty_${i}`} />)}
-                                            {Array.from({ length: daysInMonth }).map((_, i) => {
-                                                const day = i + 1;
-                                                const isToday = day === today.getDate();
-                                                const hasSession = sessionDays.has(day);
-                                                const isSelected = selectedDate === day;
-                                                
-                                                // Priority: Selected > Today+Session > Today > Session > Normal
-                                                let buttonStyles = "text-gray-600 opacity-30 cursor-not-allowed";
-                                                if (isSelected) {
-                                                    buttonStyles = "bg-emerald-500 text-white scale-110 shadow-lg shadow-emerald-900/40";
-                                                } else if (isToday && hasSession) {
-                                                    buttonStyles = "bg-blue-500/20 text-blue-400 border-2 border-emerald-500/40";
-                                                } else if (isToday) {
-                                                    buttonStyles = "bg-blue-500/20 text-blue-400 border border-blue-500/30";
-                                                } else if (hasSession) {
-                                                    buttonStyles = "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20";
-                                                }
-
-                                                return (
-                                                    <button
-                                                        key={day}
-                                                        onClick={() => { setSelectedDate(isSelected ? null : day); setShowTimeline(false); }}
-                                                        className={`aspect-square rounded-xl text-xs font-bold transition-all flex items-center justify-center ${buttonStyles}`}
-                                                        disabled={!hasSession && !isSelected}
-                                                    >
-                                                        {day}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                        <div className="flex items-center gap-4 mt-4 justify-center text-[9px] font-bold text-gray-500">
-                                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/40 rounded"></span> Work Uploaded</span>
-                                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500/40 rounded"></span> Today</span>
-                                        </div>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Selected Date Details */}
-                            {selectedDate && (() => {
-                                const year = new Date().getFullYear();
-                                const month = new Date().getMonth();
-                                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(selectedDate).padStart(2, '0')}`;
-
-                                // Find OD requests covering this date
-                                const dayRequests = requestHistory.filter(r => {
-                                    if (!r.startDate || !r.endDate) return false;
-                                    return dateStr >= r.startDate && dateStr <= r.endDate && (r.status === 'APPROVED' || r.status === 'HOD_APPROVED');
-                                });
-
-                                // Find break timers on this date
-                                const dayBreaks = breakHistory.filter(t => {
-                                    const tDate = new Date(t.createdAt).toISOString().slice(0, 10);
-                                    return tDate === dateStr;
-                                });
-
-                                // Calculate working hours (slot time minus break time)
-                                const slot = dayRequests[0]?.timeSlot || getDefaultSlot(user.id);
-                                const slotHours = slot === 'Slot-3' ? 6 : 3;
-                                const totalBreakMins = dayBreaks.reduce((acc, t) => {
-                                    if (t.status === 'STOPPED' || t.status === 'EXPIRED') {
-                                        const start = new Date(t.startedAt);
-                                        const end = t.stoppedAt ? new Date(t.stoppedAt) : new Date(t.expiresAt);
-                                        return acc + (end - start) / 60000;
-                                    }
-                                    return acc;
-                                }, 0);
-                                const effectiveHours = Math.max(0, slotHours - totalBreakMins / 60);
-
-                                // Check if work was uploaded for this specific date
-                                const hasUpload = studentUploads.some(u => {
-                                    const uDate = u.uploadDate.slice(0, 10); // Assume ISO start
-                                    const d = new Date(u.uploadDate);
-                                    // Robust check: either string prefix match or local components match
-                                    return uDate === dateStr || (d.getDate() === selectedDate && d.getMonth() === month && d.getFullYear() === year);
-                                });
-
-                                if (dayRequests.length === 0 || !hasUpload) {
-                                    return (
-                                        <div className="bg-white/5 rounded-[2rem] p-8 border border-white/5 text-center">
-                                            <FiInfo className="mx-auto text-gray-600 mb-3" size={32} />
-                                            <p className="text-gray-500 text-xs font-black uppercase tracking-widest">
-                                                {dayRequests.length === 0 ? 'No OD session on this date' : 'Work upload pending for this date'}
-                                            </p>
-                                        </div>
-                                    );
-                                }
-
-                                return (
-                                    <div className="bg-white/5 rounded-[2rem] p-8 border border-white/5 animate-fade-in">
-                                        <div className="flex items-center justify-between mb-6">
-                                            <div>
-                                                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-1">Working Hours</p>
-                                                <p className="text-3xl font-black text-emerald-400">{effectiveHours.toFixed(1)}h <span className="text-sm text-gray-500 font-bold">/ {slotHours}h</span></p>
-                                            </div>
-                                            <button
-                                                onClick={() => setShowTimeline(!showTimeline)}
-                                                className="px-5 py-3 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-emerald-500/20 transition-all"
-                                            >
-                                                {showTimeline ? 'Hide' : 'View'} Timeline
-                                            </button>
-                                        </div>
-
-                                        {/* Progress bar */}
-                                        <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden mb-2">
-                                            <div
-                                                className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-full rounded-full transition-all duration-700 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
-                                                style={{ width: `${Math.min(100, (effectiveHours / slotHours) * 100)}%` }}
-                                            ></div>
-                                        </div>
-                                        <p className="text-[9px] font-bold text-gray-600 text-right">{totalBreakMins.toFixed(0)} min break used</p>
-
-                                        {/* Timeline View */}
-                                        {showTimeline && (
-                                            <div className="mt-8 border-t border-white/5 pt-8">
-                                                <p className="text-[9px] font-black text-gray-500 uppercase tracking-widest mb-6">Day Timeline</p>
-                                                <div className="relative ml-4">
-                                                    {/* Vertical line */}
-                                                    <div className="absolute left-3 top-0 bottom-0 w-0.5 bg-white/10"></div>
-
-                                                    {/* Slot Start */}
-                                                    {(() => {
-                                                        const slotStart = slot === 'Slot-2' ? '12:30 PM' : '09:30 AM';
-                                                        const slotEnd = slot === 'Slot-1' ? '12:30 PM' : '03:30 PM';
-                                                        
-                                                        const timelineItems = [];
-
-                                                        // Start marker
-                                                        timelineItems.push(
-                                                            <div key="start" className="relative flex items-start mb-6 pl-10">
-                                                                <div className="absolute left-1 w-5 h-5 bg-emerald-500 rounded-full border-2 border-[#141417] z-10 flex items-center justify-center">
-                                                                    <span className="w-2 h-2 bg-white rounded-full"></span>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{slotStart} — Session Begin</p>
-                                                                    <p className="text-[10px] text-gray-500 font-bold">Digitally signed in to {dayRequests[0]?.labName}</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-
-                                                        // Working block before first break
-                                                        if (dayBreaks.length > 0) {
-                                                            timelineItems.push(
-                                                                <div key="working_0" className="relative flex items-start mb-6 pl-10">
-                                                                    <div className="absolute left-1 w-5 h-5 bg-emerald-500/30 rounded-full border-2 border-[#141417] z-10"></div>
-                                                                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-4 py-2">
-                                                                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">🟢 Working in Lab</p>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        // Break/Class segments
-                                                        dayBreaks.forEach((brk, idx) => {
-                                                            const brkStart = new Date(brk.startedAt);
-                                                            const brkEnd = brk.stoppedAt ? new Date(brk.stoppedAt) : new Date(brk.expiresAt);
-                                                            const durationMin = Math.round((brkEnd - brkStart) / 60000);
-
-                                                            const isClass = brk.stoppedBy === 'CLASS_SCAN' && brk.classAttendance?.className;
-
-                                                            timelineItems.push(
-                                                                <div key={`break_${idx}`} className="relative flex items-start mb-6 pl-10">
-                                                                    <div className={`absolute left-1 w-5 h-5 rounded-full border-2 border-[#141417] z-10 ${
-                                                                        isClass ? 'bg-blue-500' : 'bg-amber-500'
-                                                                    }`}></div>
-                                                                    <div className={`${isClass ? 'bg-blue-500/5 border-blue-500/10' : 'bg-amber-500/5 border-amber-500/10'} border rounded-xl px-4 py-2`}>
-                                                                        <p className={`text-[10px] font-black uppercase tracking-widest ${
-                                                                            isClass ? 'text-blue-400' : 'text-amber-400'
-                                                                        }`}>
-                                                                            {isClass ? `🔵 In Class — ${brk.classAttendance.className}` : '🟡 Break'}
-                                                                        </p>
-                                                                        <p className="text-[10px] text-gray-500 font-bold">
-                                                                            {brkStart.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} — {brkEnd.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} ({durationMin} min)
-                                                                        </p>
-                                                                        <p className="text-[8px] font-black uppercase tracking-tighter text-gray-600 mt-1">
-                                                                            {isClass ? 'Required min: 45m' : 'Required min: 20m'}
-                                                                        </p>
-                                                                        {brk.status === 'EXPIRED' && (
-                                                                            <p className="text-[9px] text-red-400 font-black uppercase tracking-widest mt-1">⚠ Timer Expired — Absent notification sent</p>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            );
-
-                                                            // Working block after break
-                                                            if (idx < dayBreaks.length - 1 || brk.status === 'STOPPED') {
-                                                                timelineItems.push(
-                                                                    <div key={`working_${idx + 1}`} className="relative flex items-start mb-6 pl-10">
-                                                                        <div className="absolute left-1 w-5 h-5 bg-emerald-500/30 rounded-full border-2 border-[#141417] z-10"></div>
-                                                                        <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-4 py-2">
-                                                                            <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">🟢 Working in Lab</p>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            }
-                                                        });
-
-                                                        // No breaks — full working block
-                                                        if (dayBreaks.length === 0) {
-                                                            timelineItems.push(
-                                                                <div key="full_working" className="relative flex items-start mb-6 pl-10">
-                                                                    <div className="absolute left-1 w-5 h-5 bg-emerald-500/30 rounded-full border-2 border-[#141417] z-10"></div>
-                                                                    <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-xl px-4 py-2">
-                                                                        <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">🟢 Full Working Session</p>
-                                                                        <p className="text-[10px] text-gray-500 font-bold">{slotHours} hours continuous</p>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        }
-
-                                                        // End marker
-                                                        timelineItems.push(
-                                                            <div key="end" className="relative flex items-start pl-10">
-                                                                <div className="absolute left-1 w-5 h-5 bg-red-500 rounded-full border-2 border-[#141417] z-10 flex items-center justify-center">
-                                                                    <span className="w-2 h-2 bg-white rounded-full"></span>
-                                                                </div>
-                                                                <div>
-                                                                    <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">{slotEnd} — Session End</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-
-                                                        return <>{timelineItems}</>;
-                                                    })()}
-                                                </div>
-
-                                                {/* Legend */}
-                                                <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-white/5 justify-center">
-                                                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500"><span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> Working</span>
-                                                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500"><span className="w-2.5 h-2.5 bg-amber-500 rounded-full"></span> Break</span>
-                                                    <span className="flex items-center gap-1.5 text-[9px] font-bold text-gray-500"><span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> In Class</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
-                        </div>
                     ) : (
                         <UploadWork user={user} />
                     )}

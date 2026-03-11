@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiBell, FiCheckCircle, FiXCircle, FiClock, FiInfo } from 'react-icons/fi';
-import { odApi, miscApi } from './api';
+import { odApi, miscApi, presenceApi } from './api';
 
 const Notifications = ({ user }) => {
     const [isOpen, setIsOpen] = useState(false);
