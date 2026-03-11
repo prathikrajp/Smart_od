@@ -103,7 +103,8 @@ export const breakTimerApi = {
         body: JSON.stringify(data)
     }),
     getActiveBreak: (studentId) => apiRequest(`/break-timers/${studentId}`),
-    getLabBreaks: (labName) => apiRequest(`/break-timers/lab/${encodeURIComponent(labName)}`)
+    getLabBreaks: (labName) => apiRequest(`/break-timers/lab/${encodeURIComponent(labName)}`),
+    getStudentHistory: (studentId) => apiRequest(`/break-timers/student-history/${studentId}`)
 };
 
 export const notificationApi = {

@@ -170,6 +170,18 @@ router.post('/stop', async (req, res) => {
     }
 });
 
+// ── GET break timer history for a student (for COE timeline) ─────────────────
+router.get('/student-history/:studentId', async (req, res) => {
+    try {
+        const timers = await BreakTimer.find({
+            studentId: req.params.studentId
+        }).sort({ createdAt: -1 });
+        res.json(timers);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch student break history' });
+    }
+});
+
 // ── GET all break timers for a lab (for Lab Incharge tracking panel) ─────────
 // NOTE: This must be defined BEFORE /:studentId to prevent Express matching "lab" as a studentId
 router.get('/lab/:labName', async (req, res) => {
