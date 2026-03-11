@@ -102,7 +102,8 @@ export const breakTimerApi = {
         method: 'POST',
         body: JSON.stringify(data)
     }),
-    getActiveBreak: (studentId) => apiRequest(`/break-timers/${studentId}`)
+    getActiveBreak: (studentId) => apiRequest(`/break-timers/${studentId}`),
+    getLabBreaks: (labName) => apiRequest(`/break-timers/lab/${encodeURIComponent(labName)}`)
 };
 
 export const notificationApi = {

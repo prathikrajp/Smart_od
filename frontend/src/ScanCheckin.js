@@ -407,7 +407,7 @@ const ScanCheckin = ({ user }) => {
         setScanning(true);
         setResult(null);
 
-        setTimeout(() => {
+        setTimeout(async () => {
             try {
                 const data = JSON.parse(scannedData);
                 if (data.type && data.name) {
@@ -425,9 +425,19 @@ const ScanCheckin = ({ user }) => {
                     const enrichedData = { ...data, floor: data.floor || locationEntry?.floor || 'Ground Floor' };
                     setLocationInfo(enrichedData);
 
-                    // ── EXIT Scan: Start break timer ─────────────────────────────
+                    // ── EXIT Scan: check if leaving or returning ─────────────
                     if (data.scanType === 'EXIT') {
-                        setResult('exit_scanned');
+                        // Check if student has an active break (meaning they're returning)
+                        try {
+                            const activeBreak = await breakTimerApi.getActiveBreak(user.id);
+                            if (activeBreak) {
+                                setResult('exit_return');
+                            } else {
+                                setResult('exit_scanned');
+                            }
+                        } catch (e) {
+                            setResult('exit_scanned');
+                        }
                     } else {
                         // ENTRY scan (default)
                         setResult('success');
@@ -448,8 +458,7 @@ const ScanCheckin = ({ user }) => {
     const handleExitScan = async () => {
         setScanning(true);
         try {
-            const slot = activeOD?.timeSlot || activeOD?.inTime === '09:30' && activeOD?.outTime === '15:30' ? 'Slot-3'
-                : activeOD?.inTime === '12:30' ? 'Slot-2' : 'Slot-1';
+            const slot = activeOD?.timeSlot || 'Slot-1';
 
             await breakTimerApi.startBreak({
                 studentId: user.id,
@@ -459,17 +468,41 @@ const ScanCheckin = ({ user }) => {
                 timeSlot: slot
             });
 
-            // End active lab session
+            // Pause COE session (not end it)
             try {
                 await sessionApi.updateSession(user.id, {
-                    isActive: false,
-                    stoppedBy: 'EXIT_SCAN',
-                    endTime: Date.now()
+                    isPaused: true,
+                    pausedAt: Date.now()
                 });
-                activeSessionRef.current = false;
             } catch (e) { /* no active session is fine */ }
 
             setResult('break_started');
+        } catch (err) {
+            console.error(err);
+            setResult('error_location');
+        }
+        setScanning(false);
+    };
+
+    // ── Handle Exit Return: stop break timer, resume COE session ─────────────
+    const handleExitReturn = async () => {
+        setScanning(true);
+        try {
+            await breakTimerApi.stopBreak({
+                studentId: user.id,
+                stoppedBy: 'EXIT_RESCAN'
+            });
+
+            // Resume COE session
+            try {
+                await sessionApi.updateSession(user.id, {
+                    isPaused: false,
+                    resumedAt: Date.now()
+                });
+                activeSessionRef.current = true;
+            } catch (e) { /* no active session is fine */ }
+
+            setResult('returned_to_lab');
         } catch (err) {
             console.error(err);
             setResult('error_location');
@@ -799,14 +832,12 @@ const ScanCheckin = ({ user }) => {
                                         <FiClock size={64} />
                                     </div>
                                     <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Exit Scanner Detected</h3>
-                                    <p className="text-gray-500 text-xs font-medium mb-6">You are about to leave {locationInfo?.name}. Your break timer will start.</p>
+                                    <p className="text-gray-500 text-xs font-medium mb-6">You are about to leave {locationInfo?.name}. Your 15-minute break timer will start.</p>
 
                                     <div className="w-full space-y-3 text-left bg-white/5 p-6 rounded-3xl border border-white/5 mb-6">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Break Allocation</p>
-                                            <p className="text-sm font-bold text-white">
-                                                {activeOD?.timeSlot === 'Slot-3' || (activeOD?.inTime === '09:30' && activeOD?.outTime === '15:30') ? '60 min' : '20 min'}
-                                            </p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Break Buffer</p>
+                                            <p className="text-sm font-bold text-white">15 minutes</p>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Location</p>
@@ -822,6 +853,37 @@ const ScanCheckin = ({ user }) => {
                                         {scanning ? 'Processing...' : 'Start Break Timer'}
                                     </button>
                                 </>
+                            ) : result === 'exit_return' ? (
+                                <>
+                                    <div className="bg-emerald-500/10 text-emerald-500 rounded-[2rem] p-8 mb-6 border border-emerald-500/20">
+                                        <CheckCircle2 size={64} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Welcome Back!</h3>
+                                    <p className="text-gray-500 text-xs font-medium mb-6">Scan detected at {locationInfo?.name}. Tap below to end your break and resume working hours.</p>
+
+                                    <button
+                                        onClick={handleExitReturn}
+                                        disabled={scanning}
+                                        className="w-full py-6 bg-emerald-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-emerald-900/40 active:scale-95 border border-emerald-400/20 disabled:opacity-50"
+                                    >
+                                        {scanning ? 'Processing...' : 'Resume Working Hours'}
+                                    </button>
+                                </>
+                            ) : result === 'returned_to_lab' ? (
+                                <>
+                                    <div className="bg-emerald-500/10 text-emerald-500 rounded-[2rem] p-8 mb-6 border border-emerald-500/20">
+                                        <CheckCircle2 size={64} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Session Resumed</h3>
+                                    <p className="text-gray-500 text-xs font-medium mb-6">Break timer stopped. COE working hours are now running.</p>
+
+                                    <div className="w-full bg-emerald-500/5 p-6 rounded-3xl border border-emerald-500/10 text-left">
+                                        <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1">Status</p>
+                                        <p className="text-[11px] text-gray-300 font-bold leading-relaxed">
+                                            You are now back in {locationInfo?.name}. Working hours have resumed successfully.
+                                        </p>
+                                    </div>
+                                </>
                             ) : result === 'break_started' ? (
                                 <>
                                     <div className="bg-orange-500/10 text-orange-400 rounded-[2rem] p-8 mb-6 border border-orange-500/20">
@@ -829,13 +891,13 @@ const ScanCheckin = ({ user }) => {
                                     </div>
                                     <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Break Timer Active</h3>
                                     <p className="text-gray-500 text-xs font-medium mb-6">
-                                        Your break has started. Return before the timer expires or scan a classroom entry QR to attend a lecture.
+                                        Your 15-minute break has started. Return and scan the exit QR again to resume working hours.
                                     </p>
 
                                     <div className="w-full bg-orange-500/5 p-6 rounded-3xl border border-orange-500/10 text-left">
                                         <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1">Reminder</p>
                                         <p className="text-[11px] text-gray-300 font-bold leading-relaxed">
-                                            If you do not scan any QR code before your break expires, an absence notification will be automatically sent to your Lab Incharge and Class Advisor.
+                                            If you do not scan any QR code within 15 minutes, an absence notification will be sent to your Lab Incharge and Class Advisor.
                                         </p>
                                     </div>
                                 </>
@@ -854,7 +916,7 @@ const ScanCheckin = ({ user }) => {
                                     </p>
                                 </>
                             )}
-                            {!['signed_in', 'break_started', 'exit_scanned'].includes(result) && (
+                            {!['signed_in', 'break_started', 'exit_scanned', 'exit_return', 'returned_to_lab'].includes(result) && (
                                 <button
                                     onClick={() => setResult(null)}
                                     className="w-full mt-6 py-5 bg-white text-black rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-gray-200 active:scale-95 shadow-2xl"
@@ -862,7 +924,7 @@ const ScanCheckin = ({ user }) => {
                                     {result === 'error_bssid' ? 'Try Again' : 'Re-verify Location'}
                                 </button>
                             )}
-                            {['signed_in', 'break_started'].includes(result) && (
+                            {['signed_in', 'break_started', 'returned_to_lab'].includes(result) && (
                                 <button
                                     onClick={() => setResult(null)}
                                     className="w-full mt-6 py-5 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-white/10 active:scale-95 shadow-2xl"

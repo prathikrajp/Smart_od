@@ -8,12 +8,8 @@ const activeTimers = {};
 // In-memory class return timer store: { [studentId]: timeoutHandle }
 const classReturnTimers = {};
 
-// Break durations per slot
-const BREAK_DURATIONS = {
-    'Slot-1': 20 * 60 * 1000,  // 20 minutes
-    'Slot-2': 20 * 60 * 1000,  // 20 minutes
-    'Slot-3': 60 * 60 * 1000   // 60 minutes
-};
+// Fixed break buffer duration (15 minutes)
+const BREAK_BUFFER_MS = 15 * 60 * 1000;
 
 // Helper: create and save a notification
 const sendNotification = async (message, department, type = 'BREAK_ALERT') => {
@@ -48,7 +44,7 @@ router.post('/', async (req, res) => {
             { $set: { status: 'STOPPED', stoppedBy: 'NEW_BREAK' } }
         );
 
-        const durationMs = BREAK_DURATIONS[timeSlot] || 20 * 60 * 1000;
+        const durationMs = BREAK_BUFFER_MS;
         const now = new Date();
         const expiresAt = new Date(now.getTime() + durationMs);
 
@@ -171,6 +167,22 @@ router.post('/stop', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(400).json({ error: 'Failed to stop break timer' });
+    }
+});
+
+// ── GET all break timers for a lab (for Lab Incharge tracking panel) ─────────
+// NOTE: This must be defined BEFORE /:studentId to prevent Express matching "lab" as a studentId
+router.get('/lab/:labName', async (req, res) => {
+    try {
+        // Return ACTIVE and recently STOPPED/EXPIRED timers (last 24h)
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const timers = await BreakTimer.find({
+            labName: req.params.labName,
+            createdAt: { $gte: since }
+        }).sort({ createdAt: -1 });
+        res.json(timers);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch lab break timers' });
     }
 });
 

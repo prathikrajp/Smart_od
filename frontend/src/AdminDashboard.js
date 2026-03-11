@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FiUploadCloud as UploadCloud, FiCheckCircle as CheckCircle2, FiXCircle as XCircle, FiAlertCircle as AlertCircle, FiUser as User, FiMapPin as MapPin, FiMaximize as Maximize, FiClock as Clock, FiSearch as Search, FiCalendar as Calendar, FiChevronDown as ChevronDown, FiChevronUp as ChevronUp, FiPause, FiPlay } from 'react-icons/fi';
 import { QRCodeSVG } from 'qrcode.react';
-import { odApi, dataApi, sessionApi, presenceApi, miscApi, uploadApi, notificationApi } from './api';
+import { odApi, dataApi, sessionApi, presenceApi, miscApi, uploadApi, notificationApi, breakTimerApi } from './api';
 import Papa from 'papaparse';
 
 const AdminDashboard = ({ user }) => {
@@ -27,6 +27,8 @@ const AdminDashboard = ({ user }) => {
     const [tick, setTick] = useState(0); // forces live elapsed-time re-render
     const [successMessage, setSuccessMessage] = useState(null);
     const [notifications, setNotifications] = useState([]);
+    const [labBreakTimers, setLabBreakTimers] = useState([]);
+    const [expandedTrackingId, setExpandedTrackingId] = useState(null);
 
     useEffect(() => {
         // 0. Load Location Data from API
@@ -163,13 +165,26 @@ const AdminDashboard = ({ user }) => {
         updatePresence();
         updateCoeSessions();
 
+        // 4. Load break timer data for Lab Incharge
+        const updateBreakTimers = async () => {
+            if (user?.role === 'LAB_INCHARGE' && user?.labName) {
+                try {
+                    const timers = await breakTimerApi.getLabBreaks(user.labName);
+                    setLabBreakTimers(Array.isArray(timers) ? timers : []);
+                } catch (err) { console.error(err); }
+            }
+        };
+        updateBreakTimers();
+
         const interval = setInterval(updatePresence, 5000);
         const coeInterval = setInterval(updateCoeSessions, 5000);
+        const breakInterval = setInterval(updateBreakTimers, 5000);
         const tickInterval = setInterval(() => setTick(t => t + 1), 1000);
 
         return () => {
             clearInterval(interval);
             clearInterval(coeInterval);
+            clearInterval(breakInterval);
             clearInterval(tickInterval);
         };
     }, [user]);
@@ -528,6 +543,121 @@ const AdminDashboard = ({ user }) => {
 
             {user.role === 'LAB_INCHARGE' && activeTab === 'SESSIONS' && (
                 <>
+                    {/* ── Student Tracking Panel ──────────────────────────────── */}
+                    {(() => {
+                        // Derive signed-in students: those with approved ODs for this lab who have scanned
+                        const signedInStudents = globalRequests
+                            .filter(r => r.labName === user.labName && (r.status === 'APPROVED' || r.status === 'HOD_APPROVED') && r.scanned)
+                            .reduce((acc, r) => {
+                                if (!acc.find(s => s.studentId === r.studentId)) acc.push(r);
+                                return acc;
+                            }, []);
+
+                        if (signedInStudents.length === 0) return null;
+
+                        return (
+                            <div className="mb-12 animate-fade-in">
+                                <div className="flex items-center space-x-3 mb-6">
+                                    <div className="bg-blue-600/20 p-2.5 rounded-2xl text-blue-500">
+                                        <User size={22} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-white tracking-tight">Student Tracking</h3>
+                                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Signed-in students with real-time status</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {signedInStudents.map(req => {
+                                        const activeBreak = labBreakTimers.find(t => t.studentId === req.studentId && t.status === 'ACTIVE');
+                                        const classBreak = labBreakTimers.find(t => t.studentId === req.studentId && t.stoppedBy === 'CLASS_SCAN' && t.classAttendance?.className);
+
+                                        let status = 'IN_LAB';
+                                        let statusLabel = 'In Lab';
+                                        let statusColor = 'emerald';
+                                        let statusDetail = '';
+
+                                        if (activeBreak) {
+                                            status = 'IN_BREAK';
+                                            statusLabel = 'In Break';
+                                            statusColor = 'amber';
+                                            const remaining = Math.max(0, Math.floor((new Date(activeBreak.expiresAt) - Date.now()) / 1000));
+                                            const mins = Math.floor(remaining / 60);
+                                            const secs = remaining % 60;
+                                            statusDetail = `${mins}m ${secs}s remaining`;
+                                        } else if (classBreak && classBreak.classAttendance) {
+                                            const classEnd = new Date(classBreak.classAttendance.endTime);
+                                            if (classEnd > new Date()) {
+                                                status = 'IN_CLASS';
+                                                statusLabel = 'In Class';
+                                                statusColor = 'blue';
+                                                statusDetail = classBreak.classAttendance.className;
+                                            }
+                                        }
+
+                                        const isExpanded = expandedTrackingId === req.studentId;
+
+                                        return (
+                                            <div
+                                                key={`track_${req.studentId}`}
+                                                onClick={() => setExpandedTrackingId(isExpanded ? null : req.studentId)}
+                                                className={`p-5 rounded-3xl border cursor-pointer transition-all hover:scale-[1.01] bg-[#141417] ${
+                                                    statusColor === 'emerald' ? 'border-emerald-500/20 shadow-emerald-900/5' :
+                                                    statusColor === 'amber' ? 'border-amber-500/20 shadow-amber-900/10' :
+                                                    'border-blue-500/20 shadow-blue-900/10'
+                                                } shadow-lg`}
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <div>
+                                                        <h4 className="text-sm font-black text-white">{req.studentName}</h4>
+                                                        <p className="text-[10px] text-gray-500 font-mono">{req.studentId}</p>
+                                                    </div>
+                                                    <span className={`flex items-center space-x-1.5 text-[9px] font-black uppercase tracking-widest px-3 py-1.5 rounded-full border ${
+                                                        statusColor === 'emerald' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+                                                        statusColor === 'amber' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+                                                        'text-blue-400 bg-blue-500/10 border-blue-500/20'
+                                                    }`}>
+                                                        <span className={`w-2 h-2 rounded-full ${
+                                                            statusColor === 'emerald' ? 'bg-emerald-500' :
+                                                            statusColor === 'amber' ? 'bg-amber-500 animate-pulse' :
+                                                            'bg-blue-500'
+                                                        }`}></span>
+                                                        <span>{statusLabel}</span>
+                                                    </span>
+                                                </div>
+
+                                                {isExpanded && (
+                                                    <div className="mt-4 pt-4 border-t border-white/5 space-y-2">
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500 font-bold uppercase tracking-widest">Current Status</span>
+                                                            <span className={`font-black ${
+                                                                statusColor === 'emerald' ? 'text-emerald-400' :
+                                                                statusColor === 'amber' ? 'text-amber-400' :
+                                                                'text-blue-400'
+                                                            }`}>
+                                                                {req.studentName} is currently {statusLabel}
+                                                            </span>
+                                                        </div>
+                                                        {statusDetail && (
+                                                            <div className="flex justify-between text-[10px]">
+                                                                <span className="text-gray-500 font-bold uppercase tracking-widest">
+                                                                    {status === 'IN_BREAK' ? 'Timer' : 'Location'}
+                                                                </span>
+                                                                <span className="text-white font-bold">{statusDetail}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500 font-bold uppercase tracking-widest">OD Slot</span>
+                                                            <span className="text-white font-bold">{req.timeSlot || `${req.inTime} - ${req.outTime}`}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })()}
                     {Object.values(coeSessions).filter(s => s.labName === user.labName && s.isActive).length > 0 ? (
                         <div className="mb-12 animate-fade-in">
                             <h3 className="text-xl font-bold text-emerald-500 mb-6 flex items-center">
