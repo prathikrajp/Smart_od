@@ -521,22 +521,31 @@ const ODStatus = ({ user }) => {
                                 const firstDay = new Date(year, month, 1).getDay();
                                 const monthName = today.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-                                // Collect days that have COE session data AND a work upload
-                                const sessionDays = new Set();
-                                const uploadDays = new Set(studentUploads.map(u => {
-                                    const d = new Date(u.uploadDate);
-                                    return d.getMonth() === month && d.getFullYear() === year ? d.getDate() : null;
-                                }).filter(d => d !== null));
+                                // Helper: Get local YYYY-MM-DD from Date or string
+                                const getLocalDateStr = (val) => {
+                                    if (!val) return "";
+                                    const d = new Date(val);
+                                    if (isNaN(d.getTime())) return "";
+                                    return d.getFullYear() + "-" + 
+                                           String(d.getMonth() + 1).padStart(2, '0') + "-" + 
+                                           String(d.getDate()).padStart(2, '0');
+                                };
 
+                                // Collect dates that have BOTH an approved OD session AND a work upload
+                                const uploadDates = new Set(studentUploads.map(u => getLocalDateStr(u.uploadDate)));
+                                const sessionDays = new Set();
+                                
                                 requestHistory.filter(r => r.status === 'APPROVED' || r.status === 'HOD_APPROVED').forEach(req => {
                                     if (req.startDate && req.endDate) {
-                                        const start = new Date(req.startDate);
-                                        const end = new Date(req.endDate);
-                                        for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                                            if (d.getMonth() === month && d.getFullYear() === year) {
-                                                const day = d.getDate();
-                                                if (uploadDays.has(day)) {
-                                                    sessionDays.add(day);
+                                        // Simple string-based range check for this month
+                                        const startDay = new Date(req.startDate);
+                                        const endDay = new Date(req.endDate);
+                                        for (let d = new Date(startDay); d <= endDay; d.setDate(d.getDate() + 1)) {
+                                            const dStr = getLocalDateStr(d);
+                                            if (uploadDates.has(dStr)) {
+                                                const dDate = new Date(d);
+                                                if (dDate.getMonth() === month && dDate.getFullYear() === year) {
+                                                    sessionDays.add(dDate.getDate());
                                                 }
                                             }
                                         }
@@ -556,16 +565,24 @@ const ODStatus = ({ user }) => {
                                                 const isToday = day === today.getDate();
                                                 const hasSession = sessionDays.has(day);
                                                 const isSelected = selectedDate === day;
+                                                
+                                                // Priority: Selected > Today+Session > Today > Session > Normal
+                                                let buttonStyles = "text-gray-600 opacity-30 cursor-not-allowed";
+                                                if (isSelected) {
+                                                    buttonStyles = "bg-emerald-500 text-white scale-110 shadow-lg shadow-emerald-900/40";
+                                                } else if (isToday && hasSession) {
+                                                    buttonStyles = "bg-blue-500/20 text-blue-400 border-2 border-emerald-500/40";
+                                                } else if (isToday) {
+                                                    buttonStyles = "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+                                                } else if (hasSession) {
+                                                    buttonStyles = "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20";
+                                                }
+
                                                 return (
                                                     <button
                                                         key={day}
                                                         onClick={() => { setSelectedDate(isSelected ? null : day); setShowTimeline(false); }}
-                                                        className={`aspect-square rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
-                                                            isSelected ? 'bg-emerald-500 text-white scale-110 shadow-lg shadow-emerald-900/40' :
-                                                            isToday ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
-                                                            hasSession ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20' :
-                                                            'text-gray-600 opacity-30 cursor-not-allowed'
-                                                        }`}
+                                                        className={`aspect-square rounded-xl text-xs font-bold transition-all flex items-center justify-center ${buttonStyles}`}
                                                         disabled={!hasSession && !isSelected}
                                                     >
                                                         {day}
@@ -574,7 +591,7 @@ const ODStatus = ({ user }) => {
                                             })}
                                         </div>
                                         <div className="flex items-center gap-4 mt-4 justify-center text-[9px] font-bold text-gray-500">
-                                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/40 rounded"></span> OD + Work Upload</span>
+                                            <span className="flex items-center gap-1"><span className="w-2 h-2 bg-emerald-500/40 rounded"></span> Work Uploaded</span>
                                             <span className="flex items-center gap-1"><span className="w-2 h-2 bg-blue-500/40 rounded"></span> Today</span>
                                         </div>
                                     </div>
@@ -612,11 +629,21 @@ const ODStatus = ({ user }) => {
                                 }, 0);
                                 const effectiveHours = Math.max(0, slotHours - totalBreakMins / 60);
 
-                                if (dayRequests.length === 0) {
+                                // Check if work was uploaded for this specific date
+                                const hasUpload = studentUploads.some(u => {
+                                    const uDate = u.uploadDate.slice(0, 10); // Assume ISO start
+                                    const d = new Date(u.uploadDate);
+                                    // Robust check: either string prefix match or local components match
+                                    return uDate === dateStr || (d.getDate() === selectedDate && d.getMonth() === month && d.getFullYear() === year);
+                                });
+
+                                if (dayRequests.length === 0 || !hasUpload) {
                                     return (
                                         <div className="bg-white/5 rounded-[2rem] p-8 border border-white/5 text-center">
                                             <FiInfo className="mx-auto text-gray-600 mb-3" size={32} />
-                                            <p className="text-gray-500 text-xs font-black uppercase tracking-widest">No OD session on this date</p>
+                                            <p className="text-gray-500 text-xs font-black uppercase tracking-widest">
+                                                {dayRequests.length === 0 ? 'No OD session on this date' : 'Work upload pending for this date'}
+                                            </p>
                                         </div>
                                     );
                                 }
