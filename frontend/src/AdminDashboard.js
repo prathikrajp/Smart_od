@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { FiUploadCloud as UploadCloud, FiCheckCircle as CheckCircle2, FiXCircle as XCircle, FiAlertCircle as AlertCircle, FiUser as User, FiMapPin as MapPin, FiMaximize as Maximize, FiClock as Clock, FiSearch as Search, FiCalendar as Calendar, FiChevronDown as ChevronDown, FiChevronUp as ChevronUp, FiPause, FiPlay } from 'react-icons/fi';
 import { QRCodeSVG } from 'qrcode.react';
 import { odApi, dataApi, sessionApi, presenceApi, miscApi, uploadApi, notificationApi } from './api';
+import Papa from 'papaparse';
 
 const AdminDashboard = ({ user }) => {
     const [data, setData] = useState([]);
@@ -434,10 +435,10 @@ const AdminDashboard = ({ user }) => {
                     </div>
                 </div>
 
-                {user?.role === 'HOD' && Array.isArray(notifications) && notifications.filter(n => n && !n.readBy?.includes(user.id)).length > 0 && (
+                {user?.role === 'HOD' && user?.id && Array.isArray(notifications) && notifications.filter(n => n && !n.readBy?.includes(user.id)).length > 0 && (
                     <div className="w-full mt-8 animate-fade-in px-4">
                         <div className="flex items-center space-x-3 mb-4">
-                            <FiAlertCircle className="text-amber-500" />
+                            <AlertCircle className="text-amber-500" />
                             <h3 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Priority Approval Stream</h3>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -839,7 +840,20 @@ const AdminDashboard = ({ user }) => {
                 <div className="bg-[#141417] rounded-3xl shadow-2xl border border-white/5 overflow-hidden">
                     <div className="px-8 py-6 border-b border-white/5 bg-white/5 flex items-center justify-between">
                         <div>
-                            <h3 className="text-xl font-bold text-white">All Students — by CGPA</h3>
+                            <h3 className="text-xl font-bold text-white">Student Academic Roster</h3>
+                            {user?.role === 'HOD' && (
+                                <div className="flex space-x-2 bg-black/40 p-1.5 rounded-2xl border border-white/5 mt-4">
+                                    {['1st', '2nd', '3rd', '4th'].map(year => (
+                                        <button
+                                            key={year}
+                                            onClick={() => { setSelectedYear(year); setSearchTerm(''); }}
+                                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedYear === year ? 'bg-blue-600 text-white shadow-lg shadow-blue-900/40' : 'text-gray-500 hover:text-white hover:bg-white/5'}`}
+                                        >
+                                            {year} Year
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
                             {(user.role === 'ADVISOR' || user.role === 'HOD' || user.role === 'LAB_INCHARGE') && (
                                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-[0.2em] mt-1 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 inline-block animate-pulse">
                                     ● {user.role.replace('_', ' ')} EDIT MODE ACTIVE
@@ -856,6 +870,7 @@ const AdminDashboard = ({ user }) => {
                                 <tr>
                                     <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Rank</th>
                                     <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Student</th>
+                                    <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Class</th>
                                     {(user.role === 'ADVISOR' || user.role === 'HOD' || user.role === 'LAB_INCHARGE') && (
                                         <th scope="col" className="px-8 py-5 text-left text-xs font-black text-gray-500 uppercase tracking-widest">Action</th>
                                     )}
@@ -868,10 +883,23 @@ const AdminDashboard = ({ user }) => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {data.filter(s =>
-                                    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                    s.id.toLowerCase().includes(searchTerm.toLowerCase())
-                                ).map((student, idx) => (
+                                {data.filter(s => {
+                                    const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                                                        s.id.toLowerCase().includes(searchTerm.toLowerCase());
+                                    if (user?.role === 'HOD') {
+                                        return s.yearOfStudy === selectedYear && matchesSearch;
+                                    }
+                                    return matchesSearch;
+                                }).sort((a, b) => {
+                                    if (user?.role === 'HOD') {
+                                        // Sort by class first, then by CGPA descending
+                                        if (a.className !== b.className) {
+                                            return (a.className || '').localeCompare(b.className || '');
+                                        }
+                                        return (b.cgpa || 0) - (a.cgpa || 0);
+                                    }
+                                    return (b.cgpa || 0) - (a.cgpa || 0);
+                                }).map((student, idx) => (
                                     <React.Fragment key={idx}>
                                         <tr
                                             className={`hover:bg-white/[0.04] transition-colors cursor-pointer ${expandedStudentId === student.id ? 'bg-white/[0.03]' : ''}`}
@@ -907,6 +935,9 @@ const AdminDashboard = ({ user }) => {
                                                         <span className="text-[11px] text-gray-600 font-medium italic mt-2">Status Offline</span>
                                                     )}
                                                 </div>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <span className="text-[10px] font-black text-gray-400 bg-white/5 px-3 py-1 rounded-lg border border-white/10 uppercase tracking-widest font-mono italic">{student.className}</span>
                                             </td>
                                             {(user.role === 'ADVISOR' || user.role === 'HOD' || user.role === 'LAB_INCHARGE') && (
                                                 <td className="px-8 py-6 whitespace-nowrap">
@@ -952,7 +983,7 @@ const AdminDashboard = ({ user }) => {
                                         </tr>
                                         {expandedStudentId === student.id && (
                                             <tr className="bg-white/[0.02]">
-                                                <td colSpan={(user.role === 'ADVISOR' || user.role === 'HOD' || user.role === 'LAB_INCHARGE') ? 8 : 7} className="px-8 py-8">
+                                                <td colSpan={(user.role === 'ADVISOR' || user.role === 'HOD' || user.role === 'LAB_INCHARGE') ? 10 : 9} className="px-8 py-8">
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-10 animate-fade-in">
                                                         <div className="space-y-4">
                                                             <div className="flex items-center space-x-2 text-[10px] font-black text-blue-400 uppercase tracking-widest">
@@ -972,6 +1003,33 @@ const AdminDashboard = ({ user }) => {
                                                                 "{student.remarks === 'N/A' ? 'Maintain positive momentum.' : student.remarks}"
                                                             </p>
                                                         </div>
+                                                        {user.role === 'HOD' && (
+                                                            <div className="space-y-4 md:col-span-2 lg:col-span-1">
+                                                                <div className="flex items-center space-x-2 text-[10px] font-black text-emerald-400 uppercase tracking-widest">
+                                                                    <Clock size={12} />
+                                                                    <span>COE Working Hour Details</span>
+                                                                </div>
+                                                                <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                                                    <div className="flex items-end justify-between">
+                                                                        <div>
+                                                                            <span className="text-3xl font-black text-emerald-400">{student.coeHours}</span>
+                                                                            <span className="text-xs font-bold text-gray-500 ml-2">HOURS TOTAL</span>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Target Progress</span>
+                                                                            <span className="text-sm font-bold text-gray-300">{student.workProgress}%</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="w-full bg-white/5 rounded-full h-3 overflow-hidden border border-white/5 shadow-inner">
+                                                                        <div
+                                                                            className="bg-emerald-500 h-full rounded-full shadow-[0_0_15px_rgba(16,185,129,0.4)] transition-all duration-1000"
+                                                                            style={{ width: `${student.workProgress}%` }}
+                                                                        ></div>
+                                                                    </div>
+                                                                    <p className="text-[10px] text-gray-500 font-medium italic">* This data represents verified industry-standard working hours tracked through the portal.</p>
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </td>
                                             </tr>
