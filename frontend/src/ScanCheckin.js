@@ -552,7 +552,7 @@ const ScanCheckin = ({ user }) => {
                     <div className="flex items-center space-x-2">
                         <span className={`w-2 h-2 rounded-full ${scanWindow.open ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
                         <span className="text-[10px] font-black uppercase tracking-widest">
-                            {scanWindow.open ? 'Scan Window Open' : 'Scan Window Closed'}
+                            {scanWindow.open ? 'LIVE STATUS: ACTIVE' : 'Scan Window Closed'}
                         </span>
                     </div>
                     <span className="text-[10px] font-bold tabular-nums">{scanWindow.label}</span>
@@ -685,6 +685,10 @@ const ScanCheckin = ({ user }) => {
                                         <div className="flex items-center justify-between">
                                             <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Type</p>
                                             <p className="text-sm font-bold text-white">{locationInfo.type}</p>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Floor</p>
+                                            <p className="text-sm font-bold text-white">{locationInfo.floor || 'Ground Floor'}</p>
                                         </div>
                                         <div className="flex items-center justify-between pt-3 border-t border-white/5">
                                             <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Physical Signature</p>

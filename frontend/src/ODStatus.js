@@ -35,6 +35,12 @@ const ODStatus = ({ user }) => {
         hodName: ''
     });
 
+    // Verification State
+    const [verifyData, setVerifyData] = useState({
+        yearOfStudy: '',
+        className: ''
+    });
+
     useEffect(() => {
         if (!user) return;
 
@@ -94,7 +100,14 @@ const ODStatus = ({ user }) => {
     const priorityScore = (cgpa * 10 * 0.6) + (marks * 0.4);
     const isApprovedInitial = priorityScore > 60;
 
-    // Credential validation: check if what the student selected matches their actual profile
+    // Credential validation for request initialization
+    const verifyMismatch = (verifyData.yearOfStudy && verifyData.yearOfStudy !== user.yearOfStudy) || 
+                          (verifyData.className && verifyData.className !== user.className);
+    
+    const isVerified = verifyData.yearOfStudy === user.yearOfStudy && 
+                      verifyData.className === user.className;
+
+    // Credential validation for form internal (double check)
     const credentialMismatch = (formData.department && formData.department !== user.department) || 
                              (formData.yearOfStudy && formData.yearOfStudy !== user.yearOfStudy);
 
@@ -295,11 +308,46 @@ const ODStatus = ({ user }) => {
                             <div className={`p-8 rounded-[2rem] border ${isApprovedInitial ? 'bg-emerald-500/5 border-emerald-500/20 text-emerald-400' : 'bg-red-500/5 border-red-500/20 text-red-400'}`}>
                                 <h4 className="font-black text-lg mb-3 tracking-tight">{isApprovedInitial ? 'Request Protocol Enabled' : 'Threshold Mismatch'}</h4>
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                    <p className="text-sm font-medium leading-relaxed opacity-80 flex-1">
-                                        {isApprovedInitial ? "Your academic markers meet the primary clear-path threshold. You are authorized to generate an On-Duty request." : "Academic verification failed. Current metrics do not support automatic OD authorization."}
-                                    </p>
-                                    {isApprovedInitial && (
-                                        <button onClick={() => setShowForm(true)} className="px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white active:scale-95 transition-all shadow-xl shadow-black/20 flex items-center">
+                                    <div className="flex-1 space-y-4">
+                                        <p className="text-sm font-medium leading-relaxed opacity-80">
+                                            {isApprovedInitial ? "Your academic markers meet the primary clear-path threshold. Please verify your credentials to initialize an On-Duty request." : "Academic verification failed. Current metrics do not support automatic OD authorization."}
+                                        </p>
+                                        
+                                        {isApprovedInitial && (
+                                            <div className="flex flex-col sm:flex-row gap-4 items-end">
+                                                <div className="flex-1">
+                                                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-2 ml-1">Verify Year</label>
+                                                    <select 
+                                                        className="form-input !h-12 !bg-white/5 !border-white/10" 
+                                                        value={verifyData.yearOfStudy} 
+                                                        onChange={e => setVerifyData({...verifyData, yearOfStudy: e.target.value})}
+                                                    >
+                                                        <option value="">Select Year</option>
+                                                        <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex-1">
+                                                    <label className="block text-[9px] font-black text-gray-500 uppercase tracking-widest mb-2 ml-1">Verify Classroom</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="e.g. ACT-1" 
+                                                        className="form-input !h-12 !bg-white/5 !border-white/10" 
+                                                        value={verifyData.className} 
+                                                        onChange={e => setVerifyData({...verifyData, className: e.target.value.toUpperCase()})}
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {verifyMismatch && (
+                                            <p className="text-red-500 text-[10px] font-black uppercase tracking-widest animate-pulse mt-2">
+                                                Check Your Credentials Details for login
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {isApprovedInitial && isVerified && (
+                                        <button onClick={() => setShowForm(true)} className="px-8 py-4 bg-white text-black rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-blue-500 hover:text-white active:scale-95 transition-all shadow-xl shadow-black/20 flex items-center shrink-0">
                                             <FiSend className="mr-2" /> Initial Request
                                         </button>
                                     )}
