@@ -472,11 +472,36 @@ const ODStatus = ({ user }) => {
                                                                 <FiDownload className="mr-3" size={18} /> Credentials
                                                             </button>
                                                         )}
+                                                        {['PENDING_LAB', 'PENDING_ADVISOR', 'FORWARDED_TO_HOD', 'APPROVED', 'HOD_APPROVED'].includes(req.status) && (
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    if (window.confirm('Are you sure you want to cancel this OD request? This will also stop any active sessions.')) {
+                                                                        try {
+                                                                            setLoading(true);
+                                                                            await odApi.cancelRequest(req.id);
+                                                                            const reqs = await odApi.getAllRequests();
+                                                                            setRequestHistory(reqs.filter(r => r.studentId === user.id));
+                                                                            setLoading(false);
+                                                                        } catch (err) {
+                                                                            console.error(err);
+                                                                            alert('Failed to cancel request: ' + err.message);
+                                                                            setLoading(false);
+                                                                        }
+                                                                    }
+                                                                }}
+                                                                className="flex items-center px-8 py-4 bg-red-500/10 text-red-500 border border-red-500/20 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95 w-full md:w-auto"
+                                                            >
+                                                                <FiX className="mr-3" size={18} /> Cancel Request
+                                                            </button>
+                                                        )}
                                                         {(!isLetterValid(req) && req.status.includes('APPROVED')) && (
                                                             <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-6 py-3 rounded-xl border border-red-500/20 uppercase tracking-widest text-center">Security Expired</span>
                                                         )}
                                                         {req.status === 'DENIED' && (
                                                             <span className="text-[10px] font-black text-red-500 bg-red-500/10 px-8 py-4 rounded-2xl border border-red-500/20 uppercase tracking-widest text-center">Request Denied</span>
+                                                        )}
+                                                        {req.status === 'CANCELLED' && (
+                                                            <span className="text-[10px] font-black text-gray-500 bg-white/5 px-8 py-4 rounded-2xl border border-white/10 uppercase tracking-widest text-center">Request Cancelled</span>
                                                         )}
                                                     </div>
                                                 </div>

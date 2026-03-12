@@ -39,8 +39,8 @@ export const odApi = {
         method: 'PATCH',
         body: JSON.stringify(updates)
     }),
-    cancelRequest: (id) => apiRequest(`/od-requests/${id}`, {
-        method: 'DELETE'
+    cancelRequest: (id) => apiRequest(`/od-requests/cancel/${id}`, {
+        method: 'POST'
     })
 };
 
