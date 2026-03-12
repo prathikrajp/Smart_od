@@ -9,7 +9,7 @@ const sessionSchema = new mongoose.Schema({
     isPaused: { type: Boolean, default: false },
     pausedAt: { type: Number },
     accumulatedPauseMs: { type: Number, default: 0 },
-    startedBy: { type: String, enum: ['QR_SCAN', 'MANUAL'], default: 'MANUAL' },
+    startedBy: { type: String, enum: ['QR_SCAN', 'MANUAL', 'DIGITAL_SIGN_IN'], default: 'MANUAL' },
     stoppedBy: { type: String },
     endTime: { type: Number },
     durationMinutes: { type: Number },
