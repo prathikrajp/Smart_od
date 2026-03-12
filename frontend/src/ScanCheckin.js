@@ -106,6 +106,8 @@ const ScanCheckin = ({ user }) => {
     const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
     const [scanWindow, setScanWindow] = useState({ open: false, label: 'Initializing...', secondsRemaining: 0 });
     const [locations, setLocations] = useState([]);
+    const [activeBreakState, setActiveBreakState] = useState(null);
+    const [breakRemainingStr, setBreakRemainingStr] = useState('');
 
     // GPS auto-stop state
     const [gpsStatus, setGpsStatus] = useState(null); // 'inside' | 'outside' | 'unavailable' | null
@@ -130,6 +132,9 @@ const ScanCheckin = ({ user }) => {
     // Keep activeOD in a ref so the clock callback can read the latest value
     const activeODRef = React.useRef(activeOD);
     useEffect(() => { activeODRef.current = activeOD; }, [activeOD]);
+    
+    const activeBreakStateRef = useRef(null);
+    useEffect(() => { activeBreakStateRef.current = activeBreakState; }, [activeBreakState]);
 
     // ─── GPS Auto-Stop Logic ────────────────────────────────────────────────────
     const stopSessionOnGPSExit = useCallback(async (studentId) => {
@@ -195,6 +200,21 @@ const ScanCheckin = ({ user }) => {
         const clockInterval = setInterval(() => {
             setCurrentTime(new Date().toLocaleTimeString());
             setScanWindow(computeScanWindow(activeODRef.current));
+            
+            if (activeBreakStateRef.current) {
+                const timer = activeBreakStateRef.current;
+                if (timer.status === 'ACTIVE') {
+                    const remaining = Math.max(0, Math.ceil((new Date(timer.expiresAt) - new Date()) / 1000));
+                    const mins = Math.floor(remaining / 60);
+                    const secs = remaining % 60;
+                    setBreakRemainingStr(`${mins}m ${secs.toString().padStart(2, '0')}s`);
+                } else if (timer.status === 'PAUSED') {
+                    const remaining = Math.floor(timer.remainingDurationMs / 1000);
+                    const mins = Math.floor(remaining / 60);
+                    const secs = remaining % 60;
+                    setBreakRemainingStr(`${mins}m ${secs.toString().padStart(2, '0')}s`);
+                }
+            }
         }, 1000);
 
         // 2. Load face-api.js from CDN
@@ -227,6 +247,13 @@ const ScanCheckin = ({ user }) => {
                 } else {
                     setScanWindow(computeScanWindow(null));
                 }
+
+                try {
+                    const activeTimer = await breakTimerApi.getActiveBreak(user.id);
+                    if (activeTimer) {
+                        setActiveBreakState(activeTimer);
+                    }
+                } catch (e) { console.error('Failed to fetch active break', e); }
 
                 // 4. Fetch All Location Metadata from API
                 const locs = await dataApi.getLocations();
@@ -558,6 +585,7 @@ const ScanCheckin = ({ user }) => {
                 facultyId: locationInfo.id,
                 floor: locationInfo.floor,
                 bssid: locationInfo.bssid || 'N/A',
+                scanType: locationInfo.scanType || 'ENTRY',
                 timestamp: new Date().toISOString()
             });
 
@@ -687,6 +715,21 @@ const ScanCheckin = ({ user }) => {
                 )}
             </div>
 
+            {/* Active Break Display */}
+            {activeBreakState && (
+                <div className={`mb-6 flex flex-col md:flex-row items-center justify-between px-6 py-4 rounded-3xl border transition-all shadow-xl ${activeBreakState.status === 'PAUSED' ? 'bg-blue-500/10 border-blue-500/20 shadow-blue-900/10' : 'bg-amber-500/10 border-amber-500/20 shadow-amber-900/10'}`}>
+                    <div className="flex items-center space-x-3 mb-2 md:mb-0">
+                        <FiClock size={16} className={`text-${activeBreakState.status === 'PAUSED' ? 'blue' : 'amber'}-500 ${activeBreakState.status === 'ACTIVE' ? 'animate-pulse' : ''}`} />
+                        <span className={`text-xs font-black uppercase tracking-[0.2em] text-${activeBreakState.status === 'PAUSED' ? 'blue' : 'amber'}-400`}>
+                            {activeBreakState.status === 'PAUSED' ? 'Break Paused (In Class)' : 'Break Timer Active'}
+                        </span>
+                    </div>
+                    <span className={`text-xl md:text-2xl font-black tabular-nums tracking-tighter text-${activeBreakState.status === 'PAUSED' ? 'blue' : 'amber'}-500`}>
+                        {breakRemainingStr}
+                    </span>
+                </div>
+            )}
+
             {/* Scanner Body */}
             <div className="bg-[#141417] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-white/5 overflow-hidden relative">
                 <div className="bg-gray-900 aspect-square sm:aspect-auto sm:min-h-[400px] relative flex items-center justify-center">
@@ -782,7 +825,8 @@ const ScanCheckin = ({ user }) => {
                             )}
                         </div>
                     ) : (
-                        <div className="bg-[#141417] absolute inset-0 flex flex-col items-center justify-center p-10 text-center z-40">
+                        <div className="bg-[#141417] absolute inset-0 flex flex-col items-center p-6 sm:p-10 text-center z-40 overflow-y-auto custom-scrollbar">
+                            <div className="flex-1 w-full flex flex-col justify-center min-h-max py-4">
                             {result === 'success' ? (
                                 <>
                                     <div className="bg-emerald-500/10 text-emerald-500 rounded-[2rem] p-8 mb-6 border border-emerald-500/20 animate-bounce">
@@ -837,39 +881,37 @@ const ScanCheckin = ({ user }) => {
                                 </>
                             ) : result === 'exit_scanned' ? (
                                 <>
-                                    <div className="bg-orange-500/10 text-orange-500 rounded-[2rem] p-8 mb-6 border border-orange-500/20">
+                                    <div className="bg-amber-500/10 text-amber-500 rounded-[2rem] p-8 mb-6 border border-amber-500/20 animate-bounce">
                                         <FiClock size={64} />
                                     </div>
-                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Exit Scanner Detected</h3>
-                                    <p className="text-gray-500 text-xs font-medium mb-6">You are about to leave {locationInfo?.name}. Your 15-minute break timer will start.</p>
-
-                                    <div className="w-full space-y-3 text-left bg-white/5 p-6 rounded-3xl border border-white/5 mb-6">
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Lab Exit Scanned</h3>
+                                    <p className="text-[10px] font-black text-amber-400 uppercase tracking-widest mb-6 animate-pulse">
+                                        ⏱ Break Timer Ready to Start
+                                    </p>
+                                    <div className="w-full space-y-4 text-left bg-white/5 p-6 rounded-3xl border border-white/5 shadow-inner mb-6">
                                         <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Break Buffer</p>
-                                            <p className="text-sm font-bold text-white">15 minutes</p>
-                                        </div>
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black text-orange-500 uppercase tracking-widest">Location</p>
+                                            <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Leaving</p>
                                             <p className="text-sm font-bold text-white">{locationInfo?.name}</p>
                                         </div>
                                     </div>
-
                                     <button
                                         onClick={handleExitScan}
-                                        disabled={scanning}
-                                        className="w-full py-6 bg-orange-600 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-orange-900/40 active:scale-95 border border-orange-400/20 disabled:opacity-50"
-                                    >
-                                        {scanning ? 'Processing...' : 'Start Break Timer'}
-                                    </button>
+                                        className="w-full py-5 bg-amber-600 hover:bg-amber-500 text-white rounded-2xl text-xs font-black shadow-xl transition-all active:scale-95 uppercase tracking-widest"
+                                    >Start Break Timer</button>
+                                    <button
+                                        onClick={() => { setResult(null); setFaceVerified(false); }}
+                                        className="w-full mt-4 py-5 bg-white/5 text-gray-400 rounded-2xl text-[10px] font-black hover:text-white transition-all uppercase tracking-widest"
+                                    >Cancel</button>
                                 </>
                             ) : result === 'exit_return' ? (
                                 <>
-                                    <div className="bg-emerald-500/10 text-emerald-500 rounded-[2rem] p-8 mb-6 border border-emerald-500/20">
-                                        <CheckCircle2 size={64} />
+                                    <div className="bg-blue-500/10 text-blue-500 rounded-[2rem] p-8 mb-6 border border-blue-500/20 animate-pulse">
+                                        <FiClock size={64} />
                                     </div>
-                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Welcome Back!</h3>
-                                    <p className="text-gray-500 text-xs font-medium mb-6">Scan detected at {locationInfo?.name}. Tap below to end your break and resume working hours.</p>
-
+                                    <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Return Scanned</h3>
+                                    <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-6">
+                                        Active break detected in this lab
+                                    </p>
                                     <button
                                         onClick={handleExitReturn}
                                         disabled={scanning}
@@ -938,12 +980,17 @@ const ScanCheckin = ({ user }) => {
                             )}
                             {['signed_in', 'break_started', 'returned_to_lab'].includes(result) && (
                                 <button
-                                    onClick={() => setResult(null)}
+                                    onClick={() => {
+                                        setResult(null);
+                                        // Option to re-check UI state immediately on close
+                                        breakTimerApi.getActiveBreak(user.id).then(timer => setActiveBreakState(timer || null)).catch(()=>{});
+                                    }}
                                     className="w-full mt-6 py-5 bg-white/5 text-gray-400 border border-white/5 rounded-2xl font-black uppercase tracking-[0.2em] text-xs hover:bg-white/10 active:scale-95 shadow-2xl"
                                 >
                                     Close Portal
                                 </button>
                             )}
+                            </div>
                         </div>
                     )}
                 </div>

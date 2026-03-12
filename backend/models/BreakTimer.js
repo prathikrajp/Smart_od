@@ -9,8 +9,10 @@ const breakTimerSchema = new mongoose.Schema({
     breakDurationMs: { type: Number },
     startedAt: { type: Date, default: Date.now },
     expiresAt: { type: Date },
-    status: { type: String, default: 'ACTIVE', enum: ['ACTIVE', 'STOPPED', 'EXPIRED'] },
+    status: { type: String, default: 'ACTIVE', enum: ['ACTIVE', 'STOPPED', 'EXPIRED', 'PAUSED'] },
     stoppedBy: { type: String }, // ENTRY_SCAN, EXIT_RESCAN, EXPIRED, CLASS_SCAN
+    pausedAt: { type: Date },
+    remainingDurationMs: { type: Number },
     // Class attendance tracking
     classAttendance: {
         className: { type: String },

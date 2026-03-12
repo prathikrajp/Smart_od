@@ -66,7 +66,7 @@ router.post('/', async (req, res) => {
                     t.stoppedBy = 'EXPIRED';
                     await t.save();
 
-                    const msg = `${studentName} is not present in ${labName} lab`;
+                    const msg = `${studentName} is not present in ${labName} lab. Break timer expired.`;
                     await sendNotification(msg, department, 'BREAK_ALERT');
                     console.log(`[BreakTimer] EXPIRED: ${msg}`);
                 }
@@ -94,18 +94,28 @@ router.post('/stop', async (req, res) => {
             delete activeTimers[studentId];
         }
 
-        const timer = await BreakTimer.findOneAndUpdate(
-            { studentId, status: 'ACTIVE' },
-            { $set: { status: 'STOPPED', stoppedBy: stoppedBy || 'ENTRY_SCAN' } },
-            { new: true }
-        );
+        const now = new Date();
+        const timer = await BreakTimer.findOne({
+            studentId,
+            status: { $in: ['ACTIVE', 'PAUSED'] }
+        });
 
         if (!timer) {
             return res.json({ message: 'No active break timer found', stopped: false });
         }
 
-        // ── Class Attendance Flow ────────────────────────────────────────────
+        // ── Class Attendance Flow (PAUSE) ────────────────────────────────────
         if (stoppedBy === 'CLASS_SCAN' && className) {
+            if (timer.status === 'PAUSED') {
+                 // Already paused
+                 return res.json({ message: 'Break timer already paused', stopped: true, timer });
+            }
+            
+            timer.status = 'PAUSED';
+            timer.stoppedBy = 'CLASS_SCAN';
+            timer.pausedAt = now;
+            timer.remainingDurationMs = Math.max(0, timer.expiresAt.getTime() - now.getTime());
+
             const classStart = new Date();
             
             // Constraint: No one can attend class after 3:00 PM (15:00)
@@ -129,6 +139,7 @@ router.post('/stop', async (req, res) => {
 
             // Notify lab incharge about class attendance
             const classMsg = `${timer.studentName} is in ${className} for attending his class lecture between ${fmt(classStart)} to ${fmt(classEnd)} (HH:MM:SS)`;
+            const Notification = require('../models/Notification');
             const ntf = new Notification({
                 id: `NTF-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
                 recipientRole: 'LAB_INCHARGE',
@@ -139,35 +150,58 @@ router.post('/stop', async (req, res) => {
             });
             await ntf.save();
 
-            // Schedule class return check (45min class + 15min buffer)
+            // Schedule class return check (45min class) to auto-resume break
             if (classReturnTimers[studentId]) {
                 clearTimeout(classReturnTimers[studentId]);
             }
-            const returnCheckMs = (45 + 15) * 60 * 1000; // 45 min class + 15 min buffer (60 min total)
+            const resumeCheckMs = 45 * 60 * 1000; // 45 min class
             classReturnTimers[studentId] = setTimeout(async () => {
                 try {
-                    // Check if student has scanned lab exit QR since class started
-                    const latestTimer = await BreakTimer.findById(timer._id);
-                    // If classAttendance exists and returnDeadline has passed, check presence
-                    // We check if a new break timer was started (meaning student scanned lab exit = returned)
-                    const newerTimer = await BreakTimer.findOne({
-                        studentId,
-                        createdAt: { $gt: classStart },
-                        _id: { $ne: timer._id }
-                    });
-
-                    if (!newerTimer) {
-                        // Student did NOT return to lab within deadline
-                        const absentMsg = `${timer.studentName} is not present in ${timer.labName} lab`;
-                        await sendNotification(absentMsg, timer.department, 'BREAK_ALERT');
-                        console.log(`[ClassReturn] ABSENT: ${absentMsg}`);
+                    const pausedTimer = await BreakTimer.findById(timer._id);
+                    if (pausedTimer && pausedTimer.status === 'PAUSED') {
+                        // Resume the timer
+                        pausedTimer.status = 'ACTIVE';
+                        pausedTimer.stoppedBy = null;
+                        pausedTimer.expiresAt = new Date(Date.now() + pausedTimer.remainingDurationMs);
+                        await pausedTimer.save();
+                        
+                        console.log(`[BreakTimer] AUTO-RESUMED for ${studentId}`);
+                        
+                        // Restart the expiry timer
+                        activeTimers[studentId] = setTimeout(async () => {
+                            try {
+                                const t = await BreakTimer.findById(pausedTimer._id);
+                                if (t && t.status === 'ACTIVE') {
+                                    t.status = 'EXPIRED';
+                                    t.stoppedBy = 'EXPIRED';
+                                    await t.save();
+                                    const msg = `${t.studentName} is not present in ${t.labName} lab. Break timer expired after class.`;
+                                    await sendNotification(msg, t.department, 'BREAK_ALERT');
+                                }
+                            } catch (err) { }
+                            delete activeTimers[studentId];
+                        }, pausedTimer.remainingDurationMs);
                     }
                 } catch (err) {
-                    console.error('[ClassReturn] Check error:', err);
+                    console.error('[ClassReturn] Auto-resume error:', err);
                 }
                 delete classReturnTimers[studentId];
-            }, returnCheckMs);
+            }, resumeCheckMs);
+            
+            return res.json({ message: 'Break timer paused', stopped: true, timer });
         }
+
+        // ── Standard STOP Flow ─────────────────────────────────────────────
+        timer.status = 'STOPPED';
+        timer.stoppedBy = stoppedBy || 'ENTRY_SCAN';
+        await timer.save();
+        
+        if (classReturnTimers[studentId]) {
+            clearTimeout(classReturnTimers[studentId]);
+            delete classReturnTimers[studentId];
+        }
+
+
 
         res.json({ message: 'Break timer stopped', stopped: true, timer });
     } catch (err) {
@@ -209,7 +243,7 @@ router.get('/:studentId', async (req, res) => {
     try {
         const timer = await BreakTimer.findOne({
             studentId: req.params.studentId,
-            status: 'ACTIVE'
+            status: { $in: ['ACTIVE', 'PAUSED'] }
         });
         res.json(timer || null);
     } catch (err) {

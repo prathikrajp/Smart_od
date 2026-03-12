@@ -11,6 +11,7 @@ const AdminDashboard = ({ user }) => {
     const [approvedODs, setApprovedODs] = useState({}); // studentId -> labName map
     const [locationMap, setLocationMap] = useState({}); // locationName -> {floor, bssid}
     const [livePresence, setLivePresence] = useState({});
+    const [qrType, setQrType] = useState('ENTRY'); // Added for EXIT QR
     const [error, setError] = useState('');
     const [showQR, setShowQR] = useState(false);
     const [studentMetadata, setStudentMetadata] = useState({}); // studentId -> {achievements, remarks}
@@ -569,12 +570,29 @@ const AdminDashboard = ({ user }) => {
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {signedInStudents.map(req => {
                                         const activeBreak = labBreakTimers.find(t => t.studentId === req.studentId && t.status === 'ACTIVE');
-                                        const classBreak = labBreakTimers.find(t => t.studentId === req.studentId && t.stoppedBy === 'CLASS_SCAN' && t.classAttendance?.className);
+                                        const classBreak = labBreakTimers.find(t => t.studentId === req.studentId && t.status === 'PAUSED' && t.stoppedBy === 'CLASS_SCAN');
 
                                         let status = 'IN_LAB';
                                         let statusLabel = 'In Lab';
                                         let statusColor = 'emerald';
                                         let statusDetail = '';
+
+                                        if (status === 'IN_LAB') {
+                                            const presence = livePresence[req.studentId];
+                                            if (presence) {
+                                                if (presence.type === 'CLASS') {
+                                                    status = 'IN_CLASS';
+                                                    statusLabel = 'In Class';
+                                                    statusColor = 'blue';
+                                                    statusDetail = presence.name;
+                                                } else if (presence.type === 'LAB' && presence.name !== user.labName) {
+                                                    status = 'IN_OTHER_LAB';
+                                                    statusLabel = 'In Other Lab';
+                                                    statusColor = 'amber';
+                                                    statusDetail = presence.name;
+                                                }
+                                            }
+                                        }
 
                                         if (activeBreak) {
                                             status = 'IN_BREAK';
@@ -1180,7 +1198,8 @@ const AdminDashboard = ({ user }) => {
                     name: locationName,
                     id: user.id,
                     floor: locData.floor,
-                    bssid: locData.bssid
+                    bssid: locData.bssid,
+                    scanType: qrType
                 });
 
                 return (
@@ -1202,12 +1221,29 @@ const AdminDashboard = ({ user }) => {
                                 </div>
                             </div>
 
-                            <div className="bg-white p-6 rounded-[2.5rem] inline-block mb-10 shadow-2xl">
-                                <QRCodeSVG value={qrValue} size={240} level="H" includeMargin={false} />
+                            {user.role === 'LAB_INCHARGE' && (
+                                <div className="flex justify-center mb-6 space-x-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+                                    <button 
+                                        onClick={() => setQrType('ENTRY')} 
+                                        className={`flex-1 py-3 px-6 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${qrType === 'ENTRY' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                                    >
+                                        ENTRY QR
+                                    </button>
+                                    <button 
+                                        onClick={() => setQrType('EXIT')} 
+                                        className={`flex-1 py-3 px-6 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${qrType === 'EXIT' ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40' : 'text-gray-500 hover:text-white hover:bg-white/10'}`}
+                                    >
+                                        EXIT QR
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className={`p-6 rounded-[2.5rem] inline-block mb-10 shadow-2xl transition-all duration-500 ${qrType === 'ENTRY' ? 'bg-white' : 'bg-amber-100 ring-4 ring-amber-500/50'}`}>
+                                <QRCodeSVG value={qrValue} size={240} level="H" includeMargin={false} fgColor={qrType === 'ENTRY' ? '#000000' : '#d97706'} />
                             </div>
 
                             <p className="text-gray-500 text-sm font-medium mb-8 leading-relaxed max-w-xs mx-auto">
-                                Students must scan this code using their SmartOD portal to verify real-time presence.
+                                Students must scan this <span className={qrType === 'ENTRY' ? 'text-emerald-500 font-bold' : 'text-amber-500 font-bold'}>{qrType}</span> code using their SmartOD portal to verify real-time presence.
                             </p>
 
                             <button
