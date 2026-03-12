@@ -30,6 +30,7 @@ const AdminDashboard = ({ user }) => {
     const [notifications, setNotifications] = useState([]);
     const [labBreakTimers, setLabBreakTimers] = useState([]);
     const [expandedTrackingId, setExpandedTrackingId] = useState(null);
+    const [uploadCounts, setUploadCounts] = useState({}); // studentId -> count
 
     useEffect(() => {
         // 0. Load Location Data from API
@@ -175,17 +176,30 @@ const AdminDashboard = ({ user }) => {
                 } catch (err) { console.error(err); }
             }
         };
+
+        const updateUploadCounts = async () => {
+            if (user?.role === 'LAB_INCHARGE' || user?.role === 'ADVISOR' || user?.role === 'HOD') {
+                try {
+                    const counts = await uploadApi.getUploadSummary();
+                    setUploadCounts(counts || {});
+                } catch (err) { console.error("Upload summary fetch failed:", err); }
+            }
+        };
+
         updateBreakTimers();
+        updateUploadCounts();
 
         const interval = setInterval(updatePresence, 5000);
         const coeInterval = setInterval(updateCoeSessions, 5000);
         const breakInterval = setInterval(updateBreakTimers, 5000);
+        const uploadInterval = setInterval(updateUploadCounts, 10000); // Update counts every 10s
         const tickInterval = setInterval(() => setTick(t => t + 1), 1000);
 
         return () => {
             clearInterval(interval);
             clearInterval(coeInterval);
             clearInterval(breakInterval);
+            clearInterval(uploadInterval);
             clearInterval(tickInterval);
         };
     }, [user]);
@@ -872,10 +886,25 @@ const AdminDashboard = ({ user }) => {
                                         s.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                         (s.className || '').toLowerCase().includes(searchTerm.toLowerCase())
                                     )
-                                ).sort((a, b) => b.coeHours - a.coeHours).map((student) => {
+                                ).sort((a, b) => {
+                                    const countA = uploadCounts[a.id] || 0;
+                                    const countB = uploadCounts[b.id] || 0;
+                                    
+                                    // Primary sort: Students with uploads first
+                                    if (countA > 0 && countB === 0) return -1;
+                                    if (countA === 0 && countB > 0) return 1;
+                                    
+                                    // Secondary sort: Number of uploads descending
+                                    if (countA !== countB) return countB - countA;
+                                    
+                                    // Tertiary sort: COE Hours descending
+                                    return (b.coeHours || 0) - (a.coeHours || 0);
+                                }).map((student) => {
                                     const portfolioKey = `${student.className}__${student.id}`;
-                                    const portfolio = studentPortfolios[portfolioKey] || [];
-                                    const hasUploads = portfolio.length > 0;
+                                    const uploadsList = studentPortfolios[portfolioKey] || [];
+                                    const uploadCountFromSummary = uploadCounts[student.id] || 0;
+                                    const hasUploads = uploadCountFromSummary > 0 || uploadsList.length > 0;
+                                    const displayUploadCount = Math.max(uploadCountFromSummary, uploadsList.length);
 
                                     const handleOpenPortfolio = async () => {
                                         try {
@@ -900,7 +929,7 @@ const AdminDashboard = ({ user }) => {
                                             </td>
                                             <td className="px-8 py-6 whitespace-nowrap">
                                                 <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${hasUploads ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
-                                                    {hasUploads ? `${portfolio.length} Uploads` : 'Zero Research Work'}
+                                                    {hasUploads ? `${displayUploadCount} Uploads` : 'Zero Research Work'}
                                                 </span>
                                             </td>
                                             <td className="px-8 py-6 whitespace-nowrap">

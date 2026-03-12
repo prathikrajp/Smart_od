@@ -2,6 +2,23 @@ const express = require('express');
 const router = express.Router();
 const Upload = require('../models/Upload');
 
+// Get upload counts summary for all students
+router.get('/summary/all', async (req, res) => {
+    try {
+        const counts = await Upload.aggregate([
+            { $group: { _id: '$studentId', count: { $sum: 1 } } }
+        ]);
+        const summary = {};
+        counts.forEach(item => {
+            summary[item._id] = item.count;
+        });
+        res.json(summary);
+    } catch (err) {
+        console.error('Summary fetch failed:', err);
+        res.status(500).json({ error: 'Failed to fetch upload summary' });
+    }
+});
+
 // Get uploads for a specific student
 router.get('/:studentId', async (req, res) => {
     try {

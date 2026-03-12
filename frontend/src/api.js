@@ -67,6 +67,7 @@ export const presenceApi = {
 };
 
 export const uploadApi = {
+    getUploadSummary: () => apiRequest('/uploads/summary/all'),
     getUploads: (studentId) => apiRequest(`/uploads/${studentId}`),
     uploadWork: (studentId, data) => apiRequest(`/uploads/${studentId}`, {
         method: 'POST',
