@@ -238,6 +238,23 @@ const AdminDashboard = ({ user }) => {
                 });
             }
 
+            if (nextStatus === 'APPROVED') {
+                // Auto-start 10 minute grace timer for check-in
+                try {
+                    await breakTimerApi.startBreak({
+                        studentId: req.studentId,
+                        studentName: req.studentName,
+                        labName: req.labName,
+                        department: req.department,
+                        timeSlot: req.timeSlot || 'Unknown',
+                        durationMs: 10 * 60 * 1000,
+                        source: 'APPROVAL_GRACE'
+                    });
+                } catch (bErr) {
+                    console.error("Failed to start auto grace timer", bErr);
+                }
+            }
+
             await updateRequestStatus(req.id, req.studentId, nextStatus);
         } catch (err) {
             console.error("Approval failed:", err);
@@ -844,6 +861,7 @@ const AdminDashboard = ({ user }) => {
                                     <th className="px-8 py-5 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">ID</th>
                                     <th className="px-8 py-5 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Class</th>
                                     <th className="px-8 py-5 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">Status</th>
+                                    <th className="px-8 py-5 text-left text-[10px] font-black text-gray-500 uppercase tracking-widest">COE Hours</th>
                                     <th className="px-8 py-5 text-right text-[10px] font-black text-gray-500 uppercase tracking-widest">Action</th>
                                 </tr>
                             </thead>
@@ -883,6 +901,11 @@ const AdminDashboard = ({ user }) => {
                                             <td className="px-8 py-6 whitespace-nowrap">
                                                 <span className={`text-[10px] font-black uppercase px-3 py-1 rounded-full border ${hasUploads ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`}>
                                                     {hasUploads ? `${portfolio.length} Uploads` : 'Zero Research Work'}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 whitespace-nowrap">
+                                                <span className="text-[12px] font-black text-blue-400">
+                                                    {student.coeHours ? student.coeHours.toFixed(1) : '0.0'} hrs
                                                 </span>
                                             </td>
                                             <td className="px-8 py-6 whitespace-nowrap text-right">
@@ -929,53 +952,6 @@ const AdminDashboard = ({ user }) => {
                                     <div className="flex items-center space-x-4">
                                         <button onClick={() => handleDeny(req)} className="px-6 py-3 text-sm font-bold text-red-500 bg-red-500/5 border border-red-500/20 rounded-xl hover:bg-red-500/10 transition-colors">REJECT</button>
                                         <button onClick={() => handleApprove(req)} className="px-8 py-3 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-500 shadow-lg shadow-blue-900/20 transition-all active:scale-95">APPROVE & FORWARD</button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {user?.role === 'ADVISOR' && Array.isArray(globalRequests) && globalRequests.filter(r => r && r.className === user.className && r.status === 'APPROVED' && !r.timerStartedAt).length > 0 && (
-                <div className="mb-12 animate-fade-in">
-                    <h3 className="text-xl font-bold text-amber-500 mb-6 flex items-center">
-                        <Clock className="text-amber-500 mr-2" />
-                        Approved ODs (Awaiting Timer Start)
-                    </h3>
-                    <div className="grid grid-cols-1 gap-4">
-                        {globalRequests.filter(r => r && r.className === user.className && r.status === 'APPROVED' && !r.timerStartedAt).map(req => (
-                            <div key={`timer_${req.id}`} className="p-6 rounded-3xl border border-amber-500/20 shadow-2xl transition-all bg-[#141417]">
-                                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                                    <div className="space-y-2">
-                                        <div className="flex items-center space-x-3">
-                                            <span className="text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-widest bg-amber-500/10 text-amber-500 border border-amber-500/20">
-                                                Awaiting Manual Start
-                                            </span>
-                                            <span className="text-xs font-bold text-gray-600">Request #{(req.id?.toString() || '??').slice(-4)}</span>
-                                        </div>
-                                        <h4 className="text-xl font-bold text-white">{req.studentName} <span className="text-sm font-medium text-gray-500">({req.studentId})</span></h4>
-                                        <div className="flex flex-wrap gap-4 text-xs font-mono text-gray-400">
-                                            <span className="flex items-center"><MapPin size={12} className="mr-1 text-amber-500" /> {req.labName}</span>
-                                            <span className="flex items-center"><Calendar size={12} className="mr-1 text-amber-500" /> {req.startDate} - {req.endDate}</span>
-                                            <span className="flex items-center"><Clock size={12} className="mr-1 text-amber-500" /> {req.inTime} - {req.outTime}</span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center space-x-4">
-                                        <button
-                                            onClick={async () => {
-                                                try {
-                                                    await odApi.updateStatus(req.id, { timerStartedAt: Date.now() });
-                                                    // Refresh the list
-                                                    const updatedGlobal = await odApi.getAllRequests();
-                                                    setGlobalRequests(updatedGlobal);
-                                                } catch (err) { console.error(err); }
-                                            }}
-                                            className="px-8 py-3 text-sm font-bold text-black bg-amber-500 rounded-xl hover:bg-amber-400 shadow-lg shadow-amber-900/20 transition-all active:scale-95 flex items-center"
-                                        >
-                                            <Clock size={16} className="mr-2" />
-                                            START CHECK-IN TIMER
-                                        </button>
                                     </div>
                                 </div>
                             </div>

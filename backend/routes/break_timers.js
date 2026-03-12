@@ -30,7 +30,7 @@ const sendNotification = async (message, department, type = 'BREAK_ALERT') => {
 // ── START break timer ────────────────────────────────────────────────────────
 router.post('/', async (req, res) => {
     try {
-        const { studentId, studentName, labName, department, timeSlot } = req.body;
+        const { studentId, studentName, labName, department, timeSlot, durationMs, source } = req.body;
 
         // Cancel any existing timer for this student
         if (activeTimers[studentId]) {
@@ -44,13 +44,14 @@ router.post('/', async (req, res) => {
             { $set: { status: 'STOPPED', stoppedBy: 'NEW_BREAK' } }
         );
 
-        const durationMs = BREAK_BUFFER_MS;
+        const actualDurationMs = durationMs || BREAK_BUFFER_MS;
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + durationMs);
+        const expiresAt = new Date(now.getTime() + actualDurationMs);
 
         const timer = new BreakTimer({
             studentId, studentName, labName, department, timeSlot,
-            breakDurationMs: durationMs,
+            breakDurationMs: actualDurationMs,
+            source: source || 'BREAK',
             startedAt: now,
             expiresAt,
             status: 'ACTIVE'
@@ -65,8 +66,9 @@ router.post('/', async (req, res) => {
                     t.status = 'EXPIRED';
                     t.stoppedBy = 'EXPIRED';
                     await t.save();
-
-                    const msg = `${studentName} is not present in ${labName} lab. Break timer expired.`;
+                    const msg = timer.source === 'APPROVAL_GRACE'
+                        ? `${studentName} failed to report to ${labName} within the 10-minute reporting window.`
+                        : `${studentName} is not present in ${labName} lab. Break timer expired.`;
                     await sendNotification(msg, department, 'BREAK_ALERT');
                     console.log(`[BreakTimer] EXPIRED: ${msg}`);
                 }
@@ -74,7 +76,7 @@ router.post('/', async (req, res) => {
                 console.error('[BreakTimer] Expiry handler error:', err);
             }
             delete activeTimers[studentId];
-        }, durationMs);
+        }, actualDurationMs);
 
         res.status(201).json(timer);
     } catch (err) {

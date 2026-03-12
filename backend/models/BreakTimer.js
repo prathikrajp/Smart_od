@@ -7,6 +7,7 @@ const breakTimerSchema = new mongoose.Schema({
     department: { type: String },
     timeSlot: { type: String }, // Slot-1, Slot-2, Slot-3
     breakDurationMs: { type: Number },
+    source: { type: String, default: 'MANUAL' }, // e.g. 'APPROVAL_GRACE', 'BREAK'
     startedAt: { type: Date, default: Date.now },
     expiresAt: { type: Date },
     status: { type: String, default: 'ACTIVE', enum: ['ACTIVE', 'STOPPED', 'EXPIRED', 'PAUSED'] },

@@ -740,7 +740,21 @@ const ScanCheckin = ({ user }) => {
                         </div>
                     ) : result === null ? (
                         <div className="text-center p-8 w-full h-full flex flex-col items-center justify-center">
-                            {(!faceVerified && !IS_MOCK_MODE) ? (
+                            {activeOD && !scanWindow.open && !activeOD.scanned ? (
+                                <div className="w-full h-full flex flex-col items-center justify-center p-8 text-center space-y-6">
+                                    <div className="bg-amber-500/10 text-amber-500 rounded-[2.5rem] p-10 mb-2 border border-amber-500/20">
+                                        <FiClock size={72} />
+                                    </div>
+                                    <h3 className="text-2xl font-black text-white tracking-tight uppercase">Access Restricted</h3>
+                                    <p className="text-amber-400 text-sm font-bold uppercase tracking-widest leading-relaxed">
+                                        Check your slot for entering the lab
+                                    </p>
+                                    <div className="bg-white/5 border border-white/5 p-6 rounded-3xl w-full mt-4">
+                                        <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Your Allotted Time</p>
+                                        <p className="text-sm font-bold text-white tracking-tight">{activeOD.inTime} - {activeOD.outTime}</p>
+                                    </div>
+                                </div>
+                            ) : (!faceVerified && !IS_MOCK_MODE) ? (
                                 <div className="w-full flex flex-col items-center">
                                     <div className="w-48 h-48 sm:w-64 sm:h-64 border-2 border-dashed border-gray-800 rounded-[2.5rem] sm:rounded-[3rem] mb-6 sm:mb-10 flex items-center justify-center bg-white/5 relative group overflow-hidden">
                                         {isFaceScanning ? (
